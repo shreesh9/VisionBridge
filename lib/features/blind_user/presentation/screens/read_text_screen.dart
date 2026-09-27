@@ -1,0 +1,662 @@
+/// VisionBridge — Read Text Screen (ML Kit OCR)
+///
+/// Dedicated high-speed OCR document & sign reader.
+/// Uses Google ML Kit Text Recognition on-device for zero-latency,
+/// offline-capable text extraction and automatic TTS narration.
+library;
+
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:camera/camera.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/theme/colors.dart';
+import '../../../../core/theme/dimensions.dart';
+import '../../../../services/tts_stt_service.dart';
+import '../../../../services/permission_service.dart';
+import '../../../../services/user_settings_service.dart';
+import '../../../../shared/widgets/glass_container.dart';
+
+class ReadTextScreen extends StatefulWidget {
+  const ReadTextScreen({super.key});
+
+  @override
+  State<ReadTextScreen> createState() => _ReadTextScreenState();
+}
+
+class _ReadTextScreenState extends State<ReadTextScreen>
+    with SingleTickerProviderStateMixin {
+  CameraController? _cameraController;
+  bool _isCameraInitialized = false;
+  String? _cameraError;
+  double _minZoom = 1.0;
+  double _maxZoom = 1.0;
+  double _currentZoom = 1.0;
+  double _baseZoom = 1.0;
+
+  final TextRecognizer _textRecognizerLatin =
+      TextRecognizer(script: TextRecognitionScript.latin);
+  final TextRecognizer _textRecognizerDevanagari =
+      TextRecognizer(script: TextRecognitionScript.devanagiri);
+  final TTSSTTService _ttsService = TTSSTTService();
+  final PermissionService _permissionService = PermissionService();
+
+  bool _isScanning = false;
+  String _extractedText = 'Point camera at any text, sign, or document and tap Read.';
+  Size _containerSize = Size.zero;
+  String _localeCode = 'en';
+
+  late AnimationController _scanAnimationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scanAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _initializeCamera();
+    _loadLocaleAndTTS();
+  }
+
+  Future<void> _initializeCamera() async {
+    final granted = await _permissionService.requestAIAssistPermissions();
+    if (!granted) {
+      if (mounted) {
+        setState(() => _cameraError = 'Camera permission required to read text.');
+      }
+      return;
+    }
+
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) setState(() => _cameraError = 'No camera found on device.');
+        return;
+      }
+
+      final backCamera = cameras.firstWhere(
+        (cam) => cam.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      _cameraController = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      try {
+        _minZoom = await _cameraController!.getMinZoomLevel();
+        final maxZ = await _cameraController!.getMaxZoomLevel();
+        _maxZoom = (maxZ > 1.0) ? maxZ : 8.0;
+        _currentZoom = _minZoom;
+      } catch (_) {
+        _minZoom = 1.0;
+        _maxZoom = 8.0;
+        _currentZoom = 1.0;
+      }
+
+      if (mounted) {
+        setState(() => _isCameraInitialized = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _cameraError = 'Failed to initialize camera: $e');
+      }
+    }
+  }
+
+  Future<void> _loadLocaleAndTTS() async {
+    try {
+      _localeCode = await UserSettingsService.getLocaleCode();
+    } catch (_) {}
+    await _ttsService.initialize();
+    await _ttsService.setLocale(_localeCode);
+    if (_localeCode == 'hi') {
+      _extractedText = 'कैमरा किसी टेक्स्ट, साइन या दस्तावेज़ की ओर रखें और पढ़ें बटन दबाएँ।';
+    }
+    _ttsService.speak(
+      _localeCode == 'hi'
+          ? 'टेक्स्ट रीडर तैयार। प्रिंटेड टेक्स्ट या साइन स्कैन करने के लिए टेक्स्ट पढ़ें बटन दबाएँ।'
+          : 'Text Reader ready. Tap Read Text to scan printed text or signs.',
+      force: true,
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _scanAnimationController.dispose();
+    _cameraController?.dispose();
+    _textRecognizerLatin.close();
+    _textRecognizerDevanagari.close();
+    _ttsService.dispose();
+    super.dispose();
+  }
+
+  /// Detect whether a string is predominantly Hindi (Devanagari) or English.
+  /// Returns 'hi' if majority characters are Devanagari, else 'en'.
+  String _detectTextLanguage(String text) {
+    int devanagariCount = 0;
+    int latinCount = 0;
+    for (final rune in text.runes) {
+      // Devanagari Unicode block: U+0900–U+097F
+      if (rune >= 0x0900 && rune <= 0x097F) {
+        devanagariCount++;
+      }
+      // Basic Latin letters A-Z, a-z
+      else if ((rune >= 0x0041 && rune <= 0x005A) ||
+               (rune >= 0x0061 && rune <= 0x007A)) {
+        latinCount++;
+      }
+    }
+    if (devanagariCount == 0 && latinCount == 0) return 'en';
+    return devanagariCount > latinCount ? 'hi' : 'en';
+  }
+
+  Future<void> _scanAndReadText() async {
+    if (_isScanning || _cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+
+    try {
+      _localeCode = await UserSettingsService.getLocaleCode();
+    } catch (_) {}
+
+    // Stop any ongoing speech immediately before starting a new scan
+    await _ttsService.stopSpeaking();
+
+    setState(() => _isScanning = true);
+    HapticFeedback.selectionClick();
+    _ttsService.speak(
+      _localeCode == 'hi' ? 'टेक्स्ट स्कैन हो रहा है...' : 'Scanning text...',
+      force: true,
+    );
+
+    try {
+      final XFile photo = await _cameraController!.takePicture();
+      final inputImage = InputImage.fromFilePath(photo.path);
+
+      // Run BOTH Latin and Devanagari recognizers in parallel
+      final results = await Future.wait([
+        _textRecognizerLatin.processImage(inputImage),
+        _textRecognizerDevanagari.processImage(inputImage),
+      ]);
+      final RecognizedText latinResult = results[0];
+      final RecognizedText devanagariResult = results[1];
+
+      // Decode exact captured image dimensions to map viewfinder crop bounds
+      final bytes = await File(photo.path).readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frameInfo = await codec.getNextFrame();
+      final double imgW = frameInfo.image.width.toDouble();
+      final double imgH = frameInfo.image.height.toDouble();
+      frameInfo.image.dispose();
+
+      // Extract visible lines from both recognizers
+      List<String> extractVisibleLines(RecognizedText recognized) {
+        final List<String> lines = [];
+        if (_containerSize.width > 0 &&
+            _containerSize.height > 0 &&
+            imgW > 0 &&
+            imgH > 0) {
+          final double containerW = _containerSize.width;
+          final double containerH = _containerSize.height;
+          final double scale = math.max(containerW / imgW, containerH / imgH);
+          final double renderedW = imgW * scale;
+          final double renderedH = imgH * scale;
+          final double offsetX = (containerW - renderedW) / 2;
+          final double offsetY = (containerH - renderedH) / 2;
+          final double minX = -offsetX / scale;
+          final double maxX = (containerW - offsetX) / scale;
+          final double minY = -offsetY / scale;
+          final double maxY = (containerH - offsetY) / scale;
+
+          for (final TextBlock block in recognized.blocks) {
+            for (final TextLine line in block.lines) {
+              final Rect lineRect = line.boundingBox;
+              final Offset center = lineRect.center;
+              if (center.dx >= minX &&
+                  center.dx <= maxX &&
+                  center.dy >= minY &&
+                  center.dy <= maxY) {
+                lines.add(line.text);
+              }
+            }
+          }
+        } else {
+          for (final TextBlock block in recognized.blocks) {
+            for (final TextLine line in block.lines) {
+              lines.add(line.text);
+            }
+          }
+        }
+        return lines;
+      }
+
+      final List<String> latinLines = extractVisibleLines(latinResult);
+      final List<String> devanagariLines = extractVisibleLines(devanagariResult);
+
+      // Merge: use whichever recognizer found more text, or combine both
+      final String latinText = latinLines.join('\n').trim();
+      final String devanagariText = devanagariLines.join('\n').trim();
+
+      // Pick the best result — prefer the one with more meaningful content
+      String text;
+      if (devanagariText.isNotEmpty && latinText.isNotEmpty) {
+        // Both found text — use the longer one (more characters = more accurate match)
+        text = devanagariText.length >= latinText.length ? devanagariText : latinText;
+      } else if (devanagariText.isNotEmpty) {
+        text = devanagariText;
+      } else {
+        text = latinText;
+      }
+
+      // Auto-detect the language of the extracted text
+      final String detectedLang = _detectTextLanguage(text);
+
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          if (text.isNotEmpty) {
+            _extractedText = text;
+          } else {
+            _extractedText = _localeCode == 'hi'
+                ? 'दृश्य में कोई टेक्स्ट नहीं मिला।'
+                : 'No text found in view.';
+          }
+        });
+
+        // Always stop previous speech before reading newly extracted text out loud
+        await _ttsService.stopSpeaking();
+
+        if (text.isNotEmpty) {
+          // OCR reads in the DETECTED language, NOT the app toggle language.
+          // Hindi text → Hindi TTS voice. English text → English TTS voice.
+          final String prefix = detectedLang == 'hi' ? 'पढ़ा गया टेक्स्ट: ' : '';
+          await _ttsService.speakWithLanguage(
+            '$prefix$text',
+            detectedLang,
+            force: true,
+          );
+        } else {
+          _ttsService.speak(
+            _localeCode == 'hi'
+                ? 'कैमरा दृश्य में कोई टेक्स्ट नहीं मिला। कृपया दस्तावेज़ को स्थिर रखें और पुनः प्रयास करें।'
+                : 'No text found in camera view. Please hold document steady and try again.',
+            force: true,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          _extractedText = _localeCode == 'hi'
+              ? 'टेक्स्ट पढ़ने में त्रुटि: $e'
+              : 'Error reading text: $e';
+        });
+        await _ttsService.stopSpeaking();
+        _ttsService.speak(
+          _localeCode == 'hi'
+              ? 'क्षमा करें, टेक्स्ट नहीं पढ़ सका। कृपया पुनः प्रयास करें।'
+              : 'Sorry, could not read text. Please try again.',
+          force: true,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
+    final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
+    final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
+    final frameColor = _isScanning ? Colors.amber : primaryColor;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () {
+            _ttsService.stopSpeaking();
+            context.pop();
+          },
+        ),
+        title: Text(
+          _localeCode == 'hi' ? 'टेक्स्ट पढ़ें (OCR)' : 'Read Text (OCR)',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Fitted Camera Feed Container with Full-Window Framing Reticle
+            Expanded(
+              flex: 5,
+              child: Container(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: VBSpacing.md,
+                  vertical: VBSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(VBRadius.xl),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.15),
+                      blurRadius: 16,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(VBRadius.xl),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Camera Preview with Fitted Aspect Ratio
+                      if (_isCameraInitialized &&
+                          _cameraController != null &&
+                          _cameraController!.value.isInitialized)
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            _containerSize = Size(
+                              constraints.maxWidth,
+                              constraints.maxHeight,
+                            );
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onScaleStart: (details) {
+                                _baseZoom = _currentZoom;
+                              },
+                              onScaleUpdate: (details) async {
+                                if (_cameraController == null || !_isCameraInitialized) return;
+                                final newZoom = (_baseZoom * details.scale).clamp(_minZoom, _maxZoom);
+                                if ((newZoom - _currentZoom).abs() > 0.04) {
+                                  _currentZoom = newZoom;
+                                  await _cameraController!.setZoomLevel(_currentZoom);
+                                  HapticFeedback.selectionClick();
+                                  if (mounted) setState(() {});
+                                }
+                              },
+                              child: SizedBox(
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                child: FittedBox(
+                                  fit: BoxFit.cover,
+                                  child: SizedBox(
+                                    width: _cameraController!.value.previewSize!.height,
+                                    height: _cameraController!.value.previewSize!.width,
+                                    child: CameraPreview(_cameraController!),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      else
+                        Container(
+                          color: const Color(0xFF181A24),
+                          child: Center(
+                            child: _cameraError != null
+                                ? Text(_cameraError!, style: TextStyle(color: textColor))
+                                : CircularProgressIndicator(color: primaryColor),
+                          ),
+                        ),
+
+                      // Full Viewfinder Framing Reticle Overlay
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.all(VBSpacing.sm),
+                          child: AnimatedBuilder(
+                            animation: _scanAnimationController,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: _ScannerReticlePainter(
+                                  color: frameColor,
+                                  isScanning: _isScanning,
+                                  scanProgress: _scanAnimationController.value,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Extracted Text Glass Card (Interactive: Tap to Replay or Stop Speech)
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: VBSpacing.md,
+                  vertical: VBSpacing.xs,
+                ),
+                child: GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    if (_ttsService.isSpeaking) {
+                      await _ttsService.stopSpeaking();
+                    } else if (_extractedText.isNotEmpty &&
+                        !_extractedText.startsWith('Point camera') &&
+                        !_extractedText.startsWith('\u0915\u0948\u092e\u0930\u093e \u0915\u093f\u0938\u0940')) {
+                      await _ttsService.stopSpeaking();
+                      // Replay in the detected language of the text
+                      final replayLang = _detectTextLanguage(_extractedText);
+                      _ttsService.speakWithLanguage(_extractedText, replayLang, force: true);
+                    }
+                  },
+                  child: GlassContainer(
+                    width: double.infinity,
+                    borderRadius: VBRadius.lg,
+                    opacity: 0.12,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.menu_book_rounded, color: primaryColor, size: 20),
+                                  const SizedBox(width: VBSpacing.xs),
+                                  Text(
+                                    _localeCode == 'hi' ? 'निकाला गया टेक्स्ट' : 'Extracted Text',
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    _ttsService.isSpeaking
+                                        ? Icons.volume_up_rounded
+                                        : Icons.volume_mute_rounded,
+                                    color: primaryColor.withOpacity(0.7),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _localeCode == 'hi' ? 'बोलने/रुकने के लिए टैप करें' : 'Tap to speak/stop',
+                                    style: TextStyle(
+                                      color: primaryColor.withOpacity(0.6),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: VBSpacing.sm),
+                          Text(
+                            _extractedText,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Scan Action Button (Press to Read / Re-scan & Interrupt)
+            Padding(
+              padding: const EdgeInsets.all(VBSpacing.md),
+              child: SizedBox(
+                width: double.infinity,
+                height: VBTouchTarget.primaryAction,
+                child: ElevatedButton.icon(
+                  onPressed: _isScanning ? null : _scanAndReadText,
+                  icon: _isScanning
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.document_scanner_rounded),
+                  label: Text(_isScanning
+                      ? (_localeCode == 'hi' ? 'टेक्स्ट स्कैन हो रहा है...' : 'Scanning Text...')
+                      : (_localeCode == 'hi' ? 'टेक्स्ट पढ़ें' : 'Read Text Out Loud')),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for camera viewfinder framing reticle & scanning laser beam
+class _ScannerReticlePainter extends CustomPainter {
+
+  _ScannerReticlePainter({
+    required this.color,
+    required this.isScanning,
+    required this.scanProgress,
+  });
+  final Color color;
+  final bool isScanning;
+  final double scanProgress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double radius = 20.0;
+    const double cornerLength = 32.0;
+
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      const Radius.circular(radius),
+    );
+
+    // Full bounding frame line
+    final Paint borderPaint = Paint()
+      ..color = color.withOpacity(0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawRRect(rrect, borderPaint);
+
+    // Glowing L-bracket corners
+    final Paint cornerPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+
+    // Top-Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, cornerLength)
+        ..lineTo(0, radius)
+        ..arcToPoint(const Offset(radius, 0), radius: const Radius.circular(radius))
+        ..lineTo(cornerLength, 0),
+      cornerPaint,
+    );
+
+    // Top-Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, 0)
+        ..lineTo(size.width - radius, 0)
+        ..arcToPoint(Offset(size.width, radius), radius: const Radius.circular(radius))
+        ..lineTo(size.width, cornerLength),
+      cornerPaint,
+    );
+
+    // Bottom-Left
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, size.height - cornerLength)
+        ..lineTo(0, size.height - radius)
+        ..arcToPoint(Offset(radius, size.height), radius: const Radius.circular(radius))
+        ..lineTo(cornerLength, size.height),
+      cornerPaint,
+    );
+
+    // Bottom-Right
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width - cornerLength, size.height)
+        ..lineTo(size.width - radius, size.height)
+        ..arcToPoint(Offset(size.width, size.height - radius), radius: const Radius.circular(radius))
+        ..lineTo(size.width, size.height - cornerLength),
+      cornerPaint,
+    );
+
+    // Animated scan line beam
+    if (isScanning) {
+      final double lineY = size.height * scanProgress;
+      final Paint scanLinePaint = Paint()
+        ..shader = LinearGradient(
+          colors: [
+            color.withOpacity(0.0),
+            color,
+            color.withOpacity(0.0),
+          ],
+        ).createShader(Rect.fromLTWH(0, lineY, size.width, 3))
+        ..strokeWidth = 3.5;
+
+      canvas.drawLine(
+        Offset(12, lineY),
+        Offset(size.width - 12, lineY),
+        scanLinePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScannerReticlePainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.isScanning != isScanning ||
+        oldDelegate.scanProgress != scanProgress;
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "@@locale": "en",
+
+  "appName": "VisionBridge",
+
+  "hello": "Hello,",
+  "dashboard": "Dashboard",
+  "volunteer": "Volunteer",
+  "settings": "Settings",
+  "openSettings": "Open settings",
+
+  "aiVisualAssist": "AI Visual Assist",
+  "tapToSeeAround": "Tap to see what's around you",
+  "aiVisualAssistSemantics": "AI Visual Assist. Tap to open camera and get AI-powered scene description.",
+
+  "history": "History",
+  "readText": "Read Text",
+  "callForHelp": "Call for Help",
+
+  "youreOnline": "You're Online",
+  "youreOffline": "You're Offline",
+  "readyToReceive": "Ready to receive help requests",
+  "tapToStartVolunteering": "Tap to start volunteering",
+  "availabilityToggleOnline": "Availability toggle. Currently online. Tap to go offline.",
+  "availabilityToggleOffline": "Availability toggle. Currently offline. Tap to go online.",
+
+  "callsHelped": "Calls Helped",
+  "timeGiven": "Time Given",
+  "recentActivity": "Recent Activity",
+  "noCallsYet": "No calls yet",
+  "goOnlineToStartHelping": "Go online to start helping!",
+  "helpedUser": "Helped {userName}",
+  "@helpedUser": {
+    "placeholders": {
+      "userName": { "type": "String" }
+    }
+  },
+  "justNow": "Just now",
+  "daysAgo": "{count}d ago",
+  "@daysAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "hoursAgo": "{count}h ago",
+  "@hoursAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "minutesAgo": "{count}m ago",
+  "@minutesAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "visuallyImpairedUser": "Visually Impaired User",
+
+  "callHistory": "Call History",
+  "noCallHistory": "No call history yet",
+  "completed": "Completed",
+  "cancelled": "Cancelled",
+  "missed": "Missed",
+
+  "incomingCall": "Incoming Call",
+  "needsVisualAssistance": "needs visual assistance",
+  "accept": "Accept",
+  "decline": "Decline",
+  "connecting": "Connecting...",
+  "connected": "Connected",
+  "callEnded": "Call ended",
+  "endCall": "End Call",
+
+  "profile": "Profile",
+  "editProfile": "Edit Profile",
+  "displayName": "Display Name",
+  "save": "Save",
+  "cancel": "Cancel",
+  "logout": "Logout",
+  "logoutConfirm": "Are you sure you want to log out?",
+
+  "ttsSpeed": "TTS Speed",
+  "ttsPitch": "TTS Pitch",
+  "detectionSensitivity": "Detection Sensitivity",
+  "hapticFeedback": "Haptic Feedback",
+  "autoDescribe": "Auto-Describe",
+  "notifications": "Notifications",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "systemDefault": "System Default",
+  "theme": "Theme",
+  "language": "Language",
+  "english": "English",
+  "hindi": "हिन्दी",
+
+  "accessibility": "Accessibility",
+  "voiceSettings": "Voice Settings",
+  "aiSettings": "AI Settings",
+  "confidenceThreshold": "Confidence Threshold",
+  "ageGroup": "Age Group",
+  "ageGroupAdult": "Adult",
+  "ageGroupGenZ": "Gen Z",
+  "ageGroupGenAlpha": "Gen Alpha",
+  "ageGroupSenior": "Senior",
+
+  "apiKeys": "API Keys",
+  "groqApiKey": "Groq API Key",
+  "geminiApiKey": "Gemini API Key",
+  "enterApiKey": "Enter API key",
+
+  "sos": "SOS",
+  "sosEmergency": "Emergency SOS",
+  "sosActivated": "SOS Activated! Notifying emergency contacts.",
+  "sosCancel": "Cancel SOS",
+
+  "scanningScene": "Scanning scene...",
+  "describingScene": "Describing what I see...",
+  "noObjectsDetected": "No objects detected",
+  "iDetect": "I detect: {objects}.",
+  "@iDetect": {
+    "placeholders": {
+      "objects": { "type": "String" }
+    }
+  },
+  "unableToDetect": "Unable to detect objects right now.",
+
+  "login": "Login",
+  "signInWithGoogle": "Sign in with Google",
+  "selectRole": "Select Your Role",
+  "iAmVisuallyImpaired": "I am Visually Impaired",
+  "iAmAVolunteer": "I am a Volunteer",
+  "roleVisuallyImpaired": "Get AI-powered visual assistance and call volunteers for help.",
+  "roleVolunteer": "Help visually impaired users by answering their video calls.",
+
+  "onboardingTitle1": "See the World with AI",
+  "onboardingDesc1": "Real-time AI descriptions of your surroundings, powered by advanced vision models.",
+  "onboardingTitle2": "Connect with Volunteers",
+  "onboardingDesc2": "Video call real human volunteers whenever you need extra help.",
+  "onboardingTitle3": "Read Any Text",
+  "onboardingDesc3": "Point your camera at text to have it read aloud instantly.",
+  "getStarted": "Get Started",
+  "next": "Next",
+  "skip": "Skip",
+
+  "groqSystemPromptVision": "You are an expert visual assistant for a blind user. Describe what is in front of the camera in 1-2 clear, accurate sentences. Focus on identifying real objects accurately.",
+  "groqSystemPromptGenZ": "You are a cool, friendly AI assistant for a Gen Z visually impaired user. Describe what is in front of the camera in 1-2 concise sentences using a casual, relatable tone (friendly vibes, natural tone, empowering). Identify objects accurately.",
+  "groqSystemPromptGenAlpha": "You are an upbeat, super encouraging AI assistant for a young visually impaired user. Describe what is in front of the camera in 1-2 simple, energetic, friendly sentences so they feel empowered and independent!",
+  "groqLanguageInstruction": "Respond in English.",
+
+  "versionLabel": "VisionBridge v{version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  }
+}

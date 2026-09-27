@@ -1,0 +1,150 @@
+{
+  "@@locale": "hi",
+
+  "appName": "विज़नब्रिज",
+
+  "hello": "नमस्ते,",
+  "dashboard": "डैशबोर्ड",
+  "volunteer": "स्वयंसेवक",
+  "settings": "सेटिंग्स",
+  "openSettings": "सेटिंग्स खोलें",
+
+  "aiVisualAssist": "AI दृश्य सहायक",
+  "tapToSeeAround": "अपने आस-पास देखने के लिए टैप करें",
+  "aiVisualAssistSemantics": "AI दृश्य सहायक। कैमरा खोलने और AI-संचालित दृश्य विवरण प्राप्त करने के लिए टैप करें।",
+
+  "history": "इतिहास",
+  "readText": "टेक्स्ट पढ़ें",
+  "callForHelp": "मदद के लिए कॉल करें",
+
+  "youreOnline": "आप ऑनलाइन हैं",
+  "youreOffline": "आप ऑफ़लाइन हैं",
+  "readyToReceive": "मदद के अनुरोध प्राप्त करने के लिए तैयार",
+  "tapToStartVolunteering": "स्वयंसेवा शुरू करने के लिए टैप करें",
+  "availabilityToggleOnline": "उपलब्धता टॉगल। वर्तमान में ऑनलाइन। ऑफ़लाइन होने के लिए टैप करें।",
+  "availabilityToggleOffline": "उपलब्धता टॉगल। वर्तमान में ऑफ़लाइन। ऑनलाइन होने के लिए टैप करें।",
+
+  "callsHelped": "कॉल सहायता",
+  "timeGiven": "दिया गया समय",
+  "recentActivity": "हालिया गतिविधि",
+  "noCallsYet": "अभी तक कोई कॉल नहीं",
+  "goOnlineToStartHelping": "मदद शुरू करने के लिए ऑनलाइन जाएँ!",
+  "helpedUser": "{userName} की मदद की",
+  "@helpedUser": {
+    "placeholders": {
+      "userName": { "type": "String" }
+    }
+  },
+  "justNow": "अभी",
+  "daysAgo": "{count} दिन पहले",
+  "@daysAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "hoursAgo": "{count} घंटे पहले",
+  "@hoursAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "minutesAgo": "{count} मिनट पहले",
+  "@minutesAgo": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "visuallyImpairedUser": "दृष्टिबाधित उपयोगकर्ता",
+
+  "callHistory": "कॉल इतिहास",
+  "noCallHistory": "अभी तक कोई कॉल इतिहास नहीं",
+  "completed": "पूर्ण",
+  "cancelled": "रद्द",
+  "missed": "मिस्ड",
+
+  "incomingCall": "इनकमिंग कॉल",
+  "needsVisualAssistance": "को दृश्य सहायता चाहिए",
+  "accept": "स्वीकार करें",
+  "decline": "अस्वीकार करें",
+  "connecting": "कनेक्ट हो रहा है...",
+  "connected": "कनेक्ट हो गया",
+  "callEnded": "कॉल समाप्त",
+  "endCall": "कॉल समाप्त करें",
+
+  "profile": "प्रोफ़ाइल",
+  "editProfile": "प्रोफ़ाइल संपादित करें",
+  "displayName": "प्रदर्शित नाम",
+  "save": "सहेजें",
+  "cancel": "रद्द करें",
+  "logout": "लॉग आउट",
+  "logoutConfirm": "क्या आप निश्चित रूप से लॉग आउट करना चाहते हैं?",
+
+  "ttsSpeed": "बोलने की गति",
+  "ttsPitch": "आवाज़ की पिच",
+  "detectionSensitivity": "पहचान संवेदनशीलता",
+  "hapticFeedback": "हैप्टिक फीडबैक",
+  "autoDescribe": "स्वचालित विवरण",
+  "notifications": "सूचनाएँ",
+  "darkMode": "डार्क मोड",
+  "lightMode": "लाइट मोड",
+  "systemDefault": "सिस्टम डिफ़ॉल्ट",
+  "theme": "थीम",
+  "language": "भाषा",
+  "english": "English",
+  "hindi": "हिन्दी",
+
+  "accessibility": "सुगमता",
+  "voiceSettings": "आवाज़ सेटिंग्स",
+  "aiSettings": "AI सेटिंग्स",
+  "confidenceThreshold": "विश्वास सीमा",
+  "ageGroup": "आयु वर्ग",
+  "ageGroupAdult": "वयस्क",
+  "ageGroupGenZ": "Gen Z",
+  "ageGroupGenAlpha": "Gen Alpha",
+  "ageGroupSenior": "वरिष्ठ",
+
+  "apiKeys": "API कुंजियाँ",
+  "groqApiKey": "Groq API कुंजी",
+  "geminiApiKey": "Gemini API कुंजी",
+  "enterApiKey": "API कुंजी दर्ज करें",
+
+  "sos": "SOS",
+  "sosEmergency": "आपातकालीन SOS",
+  "sosActivated": "SOS सक्रिय! आपातकालीन संपर्कों को सूचित किया जा रहा है।",
+  "sosCancel": "SOS रद्द करें",
+
+  "scanningScene": "दृश्य स्कैन हो रहा है...",
+  "describingScene": "मैं जो देख रहा हूँ उसका वर्णन कर रहा हूँ...",
+  "noObjectsDetected": "कोई वस्तु नहीं मिली",
+  "iDetect": "मुझे दिखाई दे रहा है: {objects}।",
+  "@iDetect": {
+    "placeholders": {
+      "objects": { "type": "String" }
+    }
+  },
+  "unableToDetect": "अभी वस्तुओं का पता नहीं लगा पा रहा।",
+
+  "login": "लॉगिन",
+  "signInWithGoogle": "Google से साइन इन करें",
+  "selectRole": "अपनी भूमिका चुनें",
+  "iAmVisuallyImpaired": "मैं दृष्टिबाधित हूँ",
+  "iAmAVolunteer": "मैं एक स्वयंसेवक हूँ",
+  "roleVisuallyImpaired": "AI-संचालित दृश्य सहायता प्राप्त करें और मदद के लिए स्वयंसेवकों को कॉल करें।",
+  "roleVolunteer": "दृष्टिबाधित उपयोगकर्ताओं की वीडियो कॉल का जवाब देकर उनकी मदद करें।",
+
+  "onboardingTitle1": "AI के साथ दुनिया देखें",
+  "onboardingDesc1": "उन्नत विज़न मॉडल द्वारा संचालित, आपके आस-पास का रियल-टाइम AI विवरण।",
+  "onboardingTitle2": "स्वयंसेवकों से जुड़ें",
+  "onboardingDesc2": "जब भी अतिरिक्त मदद चाहिए, असली स्वयंसेवकों को वीडियो कॉल करें।",
+  "onboardingTitle3": "कोई भी टेक्स्ट पढ़ें",
+  "onboardingDesc3": "टेक्स्ट पर कैमरा रखें और उसे तुरंत ज़ोर से पढ़वाएँ।",
+  "getStarted": "शुरू करें",
+  "next": "अगला",
+  "skip": "छोड़ें",
+
+  "groqSystemPromptVision": "आप एक दृष्टिबाधित उपयोगकर्ता के लिए एक विशेषज्ञ दृश्य सहायक हैं। कैमरे के सामने जो है उसे 1-2 स्पष्ट, सटीक वाक्यों में बताएँ। वास्तविक वस्तुओं की सटीक पहचान पर ध्यान दें।",
+  "groqSystemPromptGenZ": "आप एक Gen Z दृष्टिबाधित उपयोगकर्ता के लिए एक अच्छे, मैत्रीपूर्ण AI सहायक हैं। कैमरे के सामने जो है उसे 1-2 संक्षिप्त वाक्यों में आकस्मिक, मिलनसार लहजे में बताएँ। वस्तुओं की सटीक पहचान करें।",
+  "groqSystemPromptGenAlpha": "आप एक युवा दृष्टिबाधित उपयोगकर्ता के लिए एक जोशीले, प्रोत्साहित करने वाले AI सहायक हैं। कैमरे के सामने जो है उसे 1-2 सरल, ऊर्जावान, मैत्रीपूर्ण वाक्यों में बताएँ ताकि वे सशक्त और स्वतंत्र महसूस करें!",
+  "groqLanguageInstruction": "हिन्दी में उत्तर दें।",
+
+  "versionLabel": "विज़नब्रिज v{version}",
+  "@versionLabel": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  }
+}

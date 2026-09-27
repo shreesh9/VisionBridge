@@ -1,0 +1,100 @@
+# VisionBridge Project Dependencies & Configuration
+# Authored by Shreesh Nalawade (shreeshnalawade9@gmail.com) | Ref: SN09092005
+name: vision_bridge
+description: AI-powered assistive navigation app for visually impaired users.
+publish_to: 'none'
+version: 9.09.05
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # --- UI & Design ---
+  google_fonts: ^6.1.0
+  flutter_svg: ^2.0.9
+  shimmer: ^3.0.0
+  lottie: ^3.0.0
+
+  # --- State Management ---
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # --- Navigation ---
+  go_router: ^14.0.0
+
+  # --- Firebase (Spark free tier) ---
+  firebase_core: ^3.1.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.0.0
+  firebase_messaging: ^15.0.0
+  google_sign_in: ^6.2.1
+
+  # --- Camera & Vision ---
+  camera: ^0.11.0
+  tflite_flutter: ^0.11.0
+  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_object_detection: ^0.13.0
+  opencv_dart: ^1.3.0
+
+  # --- WebRTC ---
+  flutter_webrtc: ^0.12.0
+
+  # --- Incoming Call UI (native Android full-screen ringing) ---
+  flutter_callkit_incoming: ^2.0.4
+
+  # --- Voice & Sound ---
+  flutter_tts: ^4.0.2
+  speech_to_text: ^7.0.0
+
+  # --- Location ---
+  geolocator: ^13.0.0
+  geocoding: ^3.0.0
+
+  # --- HTTP (for Groq API) ---
+  dio: ^5.4.0
+
+  # --- Utilities ---
+  image_picker: ^1.1.2
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+  permission_handler: ^11.3.0
+  connectivity_plus: ^6.0.3
+  uuid: ^4.3.3
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  riverpod_generator: ^2.3.9
+  build_runner: ^2.4.8
+  custom_lint: ^0.6.2
+  riverpod_lint: ^2.3.7
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/images/
+    - assets/animations/
+    - app icon/
+    - .env
+    - assets/.env
+
+
+# Native app icon generation (run: flutter pub run flutter_launcher_icons)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "app icon/light mode app icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "app icon/light mode app icon.png"
+  remove_alpha_ios: true

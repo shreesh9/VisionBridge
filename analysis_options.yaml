@@ -1,0 +1,19 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    deprecated_member_use: ignore
+    avoid_print: ignore
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_relative_lib_imports
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_fields
+    - prefer_final_locals
+    - sort_constructors_first
+    - unnecessary_this
+    - use_key_in_widget_constructors
+    - prefer_single_quotes

@@ -1,0 +1,78 @@
+# VisionBridge GitIgnore — Production Clean
+
+# --- Environment & Secret Keys ---
+.env
+.env.*
+!.env.example
+assets/.env
+*.pem
+*.key
+*.crt
+
+# --- Node / Firebase dependencies ---
+node_modules/
+**/node_modules/
+
+# --- Flutter / Dart generated files ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.symbolDev
+*.dSYM/
+
+# --- Platform Ephemeral Directories ---
+windows/flutter/ephemeral/
+linux/flutter/ephemeral/
+macos/Flutter/ephemeral/
+
+# --- Android generated files & Local Configs ---
+*.jks
+*.keystore
+android/app/key.properties
+android/local.properties
+android/.gradle/
+android/captures/
+android/gradle-app.setting
+google-services.json
+
+# --- iOS / macOS generated files & Secrets ---
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+GoogleService-Info.plist
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+ios/DerivedData/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+
+# --- IDE & Editor files ---
+.idea/
+*.iml
+.vscode/
+*.swp
+*.phptmp
+.project
+.classpath
+.settings/
+
+# --- Log & Temp Files ---
+*.log
+*.tmp
+*.bak
+
+# --- OS generated files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
