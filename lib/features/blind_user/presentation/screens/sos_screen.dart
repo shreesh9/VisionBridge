@@ -14,6 +14,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/location_service.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/tts_stt_service.dart';
@@ -40,6 +41,10 @@ class _SOSScreenState extends State<SOSScreen>
   final _ttsService = TTSSTTService();
   String _localeCode = 'en';
 
+  /// Voice narration strings for the current language — all spoken prompts
+  /// come from the registry so narration is always in the selected language.
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
+
   @override
   void initState() {
     super.initState();
@@ -52,22 +57,14 @@ class _SOSScreenState extends State<SOSScreen>
       try {
         _localeCode = await UserSettingsService.getLocaleCode();
       } catch (_) {}
-      _ttsService.speak(
-        _localeCode == 'hi'
-            ? 'SOS स्क्रीन। आपातकालीन अलर्ट भेजने के लिए बड़ा बटन दबाएँ।'
-            : 'SOS screen. Tap the large button to send emergency alert with your location.',
-      );
+      _ttsService.speak(_lang.voice(VoiceKey.sosScreenIntro));
     });
   }
 
   void _activateSOS() {
     HapticFeedback.heavyImpact();
     setState(() => _isActivated = true);
-    _ttsService.speak(
-      _localeCode == 'hi'
-          ? 'SOS $_countdown सेकंड में भेजा जाएगा। रोकने के लिए रद्द करें दबाएँ।'
-          : 'SOS will send in $_countdown seconds. Tap cancel to stop.',
-    );
+    _ttsService.speak(_lang.voiceN(VoiceKey.sosCountdown, _countdown));
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdown <= 1) {
@@ -83,14 +80,14 @@ class _SOSScreenState extends State<SOSScreen>
   void _cancelSOS() {
     _timer?.cancel();
     HapticFeedback.selectionClick();
-    _ttsService.speak(_localeCode == 'hi' ? 'SOS रद्द।' : 'SOS cancelled.');
+    _ttsService.speak(_lang.voice(VoiceKey.sosCancelled));
     if (mounted) context.pop();
   }
 
   Future<void> _sendSOS() async {
     HapticFeedback.heavyImpact();
     setState(() => _isSending = true);
-    _ttsService.speak(_localeCode == 'hi' ? 'SOS अलर्ट भेजा जा रहा है...' : 'Sending SOS alert now...');
+    _ttsService.speak(_lang.voice(VoiceKey.sosSending));
 
     try {
       // Get current location (times out after 10s if GPS unavailable)
@@ -118,18 +115,13 @@ class _SOSScreenState extends State<SOSScreen>
       } catch (_) {}
 
       if (mounted) {
-        _ttsService.speak(
-          _localeCode == 'hi'
-              ? 'SOS अलर्ट भेजा गया। आपातकालीन स्वयंसेवक से जोड़ रहे हैं।'
-              : 'SOS alert sent. Connecting to an emergency volunteer now.',
-          force: true,
-        );
+        _ttsService.speak(_lang.voice(VoiceKey.sosSent), force: true);
         context.push(AppRoutes.buInCall);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSending = false);
-        _ttsService.speak(_localeCode == 'hi' ? 'SOS अलर्ट भेजा गया।' : 'SOS alert triggered.');
+        _ttsService.speak(_lang.voice(VoiceKey.sosTriggered));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('SOS triggered: ${e.toString()}')),
         );

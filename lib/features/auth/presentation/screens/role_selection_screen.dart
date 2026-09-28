@@ -15,6 +15,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/tts_stt_service.dart';
 import '../../../../services/user_settings_service.dart';
@@ -50,9 +51,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
         code = await UserSettingsService.getLocaleCode();
       } catch (_) {}
       await _ttsService.setLocale(code);
-      _ttsService.speak(code == 'hi'
-          ? 'प्रोफ़ाइल सेटअप। जारी रखने के लिए अपनी भूमिका चुनें और अपना नाम दर्ज करें।'
-          : 'Profile setup. Please select your role and enter your name to continue.');
+      // Narration strings come from the language registry so the prompt is
+      // spoken in the selected language (never English with an Indic voice).
+      _ttsService.speak(VBLanguages.byCode(code).voice(VoiceKey.profileSetupPrompt));
     });
   }
 
@@ -65,11 +66,11 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
 
   Future<void> _handleSubmit() async {
     if (_selectedRole == null) {
-      final isHindi = ref.read(localeProvider).languageCode == 'hi';
+      final lang = VBLanguages.byCode(ref.read(localeProvider).languageCode);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isHindi ? 'कृपया अपनी भूमिका चुनें' : 'Please select your role')),
+        SnackBar(content: Text(lang == VBLanguages.hi ? 'कृपया अपनी भूमिका चुनें' : 'Please select your role')),
       );
-      _ttsService.speak(isHindi ? 'कृपया एक भूमिका चुनें।' : 'Please select a role.');
+      _ttsService.speak(lang.voice(VoiceKey.pleaseSelectRole));
       return;
     }
 
@@ -200,9 +201,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedRole = UserRole.blindUser);
-                        _ttsService.speak(isHindi
-                            ? 'दृष्टिबाधित भूमिका चुनी गई।'
-                            : 'Selected Visually Impaired role.');
+                        _ttsService.speak(
+                            VBLanguages.byCode(ref.read(localeProvider).languageCode)
+                                .voice(VoiceKey.roleSelectedBlind));
                       },
                       primaryColor: primaryColor,
                       surfaceColor: surfaceColor,
@@ -222,9 +223,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedRole = UserRole.volunteer);
-                        _ttsService.speak(isHindi
-                            ? 'स्वयंसेवक भूमिका चुनी गई।'
-                            : 'Selected Sighted Volunteer role.');
+                        _ttsService.speak(
+                            VBLanguages.byCode(ref.read(localeProvider).languageCode)
+                                .voice(VoiceKey.roleSelectedVolunteer));
                       },
                       primaryColor: primaryColor,
                       surfaceColor: surfaceColor,

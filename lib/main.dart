@@ -78,13 +78,18 @@ class _VisionBridgeAppState extends ConsumerState<VisionBridgeApp> {
         'signalingRoomId': signalingRoomId,
       });
     };
-  }
-
-  @override
+  }  @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final router = ref.watch(routerProvider);
+
+    // The voice layer supports 7 languages, but Material UI localization only
+    // ships EN/Hindi ARBs. Voice-only codes (mr/ta/te/bn/kn) must be clamped
+    // to Hindi UI, otherwise MaterialApp falls back to its first supported
+    // locale unexpectedly. Hindi is the closest UI language for Indic users.
+    final Locale clampedLocale =
+        ['en', 'hi'].contains(locale.languageCode) ? locale : const Locale('hi');
 
     return MaterialApp.router(
       title: AppConstants.appName,
@@ -92,7 +97,8 @@ class _VisionBridgeAppState extends ConsumerState<VisionBridgeApp> {
       // --- Localization ---
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: locale,
+
+      locale: clampedLocale,
       // --- Theme ---
       theme: VBTheme.light,
       darkTheme: VBTheme.dark,

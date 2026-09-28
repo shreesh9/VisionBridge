@@ -47,6 +47,10 @@ class _ReadTextScreenState extends State<ReadTextScreen>
   Size _containerSize = Size.zero;
   String _localeCode = 'en';
 
+  /// Voice narration strings for the current language — all spoken prompts
+  /// come from the registry so narration is always in the selected language.
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
+
   late AnimationController _scanAnimationController;
 
   @override
@@ -116,15 +120,14 @@ class _ReadTextScreenState extends State<ReadTextScreen>
     } catch (_) {}
     await _ttsService.initialize();
     await _ttsService.setLocale(_localeCode);
-    if (_localeCode == 'hi') {
-      _extractedText = 'कैमरा किसी टेक्स्ट, साइन या दस्तावेज़ की ओर रखें और पढ़ें बटन दबाएँ।';
+    if (_localeCode != 'en') {
+      // Placeholder hint shown in the result card, in the current language.
+      // (On-screen UI stays EN/Hindi; this is a speech-consistency hint.)
+      _extractedText = _lang == VBLanguages.hi
+          ? 'कैमरा किसी टेक्स्ट, साइन या दस्तावेज़ की ओर रखें और पढ़ें बटन दबाएँ।'
+          : _extractedText;
     }
-    _ttsService.speak(
-      _localeCode == 'hi'
-          ? 'टेक्स्ट रीडर तैयार। प्रिंटेड टेक्स्ट या साइन स्कैन करने के लिए टेक्स्ट पढ़ें बटन दबाएँ।'
-          : 'Text Reader ready. Tap Read Text to scan printed text or signs.',
-      force: true,
-    );
+    _ttsService.speak(_lang.voice(VoiceKey.scannerReady), force: true);
     if (mounted) setState(() {});
   }
 
@@ -232,10 +235,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
 
     setState(() => _isScanning = true);
     HapticFeedback.selectionClick();
-    _ttsService.speak(
-      _localeCode == 'hi' ? 'टेक्स्ट स्कैन हो रहा है...' : 'Scanning text...',
-      force: true,
-    );
+    _ttsService.speak(_lang.voice(VoiceKey.scanningText), force: true);
 
     try {
       final XFile photo = await _cameraController!.takePicture();
@@ -333,9 +333,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
           if (text.isNotEmpty) {
             _extractedText = text;
           } else {
-            _extractedText = _localeCode == 'hi'
-                ? 'दृश्य में कोई टेक्स्ट नहीं मिला।'
-                : 'No text found in view.';
+            _extractedText = _lang.voice(VoiceKey.noTextFound);
           }
         });
 
@@ -344,37 +342,33 @@ class _ReadTextScreenState extends State<ReadTextScreen>
 
         if (text.isNotEmpty) {
           // OCR reads in the DETECTED language, NOT the app toggle language.
-          // Hindi text → Hindi TTS voice. English text → English TTS voice.
-          final String prefix = detectedLang == 'hi' ? 'पढ़ा गया टेक्स्ट: ' : '';
+          // (Devanagari text maps to the app's Devanagari voice language —
+          // see TTSSTTService.speakWithLanguage.) The spoken prefix must be
+          // in that same effective voice language, not the app language.
+          final String effectiveLang =
+              _ttsService.effectiveVoiceLanguageCode(detectedLang);
+          final String prefix = effectiveLang == 'en'
+              ? ''
+              : VBLanguages.byCode(effectiveLang).readAloudPrefix();
           await _ttsService.speakWithLanguage(
             '$prefix$text',
             detectedLang,
             force: true,
           );
         } else {
-          _ttsService.speak(
-            _localeCode == 'hi'
-                ? 'कैमरा दृश्य में कोई टेक्स्ट नहीं मिला। कृपया दस्तावेज़ को स्थिर रखें और पुनः प्रयास करें।'
-                : 'No text found in camera view. Please hold document steady and try again.',
-            force: true,
-          );
+          _ttsService.speak(_lang.voice(VoiceKey.noTextRetry), force: true);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isScanning = false;
-          _extractedText = _localeCode == 'hi'
+          _extractedText = _lang == VBLanguages.hi
               ? 'टेक्स्ट पढ़ने में त्रुटि: $e'
               : 'Error reading text: $e';
         });
         await _ttsService.stopSpeaking();
-        _ttsService.speak(
-          _localeCode == 'hi'
-              ? 'क्षमा करें, टेक्स्ट नहीं पढ़ सका। कृपया पुनः प्रयास करें।'
-              : 'Sorry, could not read text. Please try again.',
-          force: true,
-        );
+        _ttsService.speak(_lang.voice(VoiceKey.ocrError), force: true);
       }
     }
   }
@@ -400,7 +394,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
           },
         ),
         title: Text(
-          _localeCode == 'hi' ? 'टेक्स्ट पढ़ें (OCR)' : 'Read Text (OCR)',
+          _lang == VBLanguages.hi ? 'टेक्स्ट पढ़ें (OCR)' : 'Read Text (OCR)',
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
         ),
       ),
@@ -542,7 +536,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                                   Icon(Icons.menu_book_rounded, color: primaryColor, size: 20),
                                   const SizedBox(width: VBSpacing.xs),
                                   Text(
-                                    _localeCode == 'hi' ? 'निकाला गया टेक्स्ट' : 'Extracted Text',
+                                    _lang == VBLanguages.hi ? 'निकाला गया टेक्स्ट' : 'Extracted Text',
                                     style: TextStyle(
                                       color: primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -562,7 +556,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    _localeCode == 'hi' ? 'बोलने/रुकने के लिए टैप करें' : 'Tap to speak/stop',
+                                    _lang == VBLanguages.hi ? 'बोलने/रुकने के लिए टैप करें' : 'Tap to speak/stop',
                                     style: TextStyle(
                                       color: primaryColor.withOpacity(0.6),
                                       fontSize: 11,
@@ -609,8 +603,10 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                         )
                       : const Icon(Icons.document_scanner_rounded),
                   label: Text(_isScanning
-                      ? (_localeCode == 'hi' ? 'टेक्स्ट स्कैन हो रहा है...' : 'Scanning Text...')
-                      : (_localeCode == 'hi' ? 'टेक्स्ट पढ़ें' : 'Read Text Out Loud')),
+                      ? _lang.voice(VoiceKey.scanningText)
+                      : (_lang == VBLanguages.hi
+                          ? 'टेक्स्ट पढ़ें'
+                          : _lang.voice(VoiceKey.readTextReady))),
                 ),
               ),
             ),

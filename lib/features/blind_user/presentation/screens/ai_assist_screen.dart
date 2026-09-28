@@ -20,6 +20,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/tts_stt_service.dart';
 import '../../../../services/permission_service.dart';
 import '../../../../services/call_orchestration_service.dart';
@@ -63,6 +64,11 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
   Timer? _descriptionDismissTimer;
   bool _isSpeakingDescription = false;
   String _localeCode = 'en'; // Current app locale for TTS language
+
+  /// Voice narration strings for the current language. All spoken prompts
+  /// MUST come from here so narration is always in the selected language
+  /// (an English string spoken by an Indic voice sounds wrong/accented).
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   void _stopSpeaking() {
     _descriptionDismissTimer?.cancel();
@@ -139,15 +145,9 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
     final granted = await _permissionService.requestAIAssistPermissions();
     if (!granted) {
       setState(() {
-        _cameraError = _localeCode == 'hi'
-            ? 'कैमरा अनुमति अस्वीकृत। कृपया सेटिंग्स में सक्षम करें।'
-            : 'Camera permission denied. Please enable it in Settings.';
+        _cameraError = _lang.voice(VoiceKey.cameraPermission);
       });
-      _ttsService.speak(
-          _localeCode == 'hi'
-              ? 'कैमरा अनुमति आवश्यक है। कृपया अपनी डिवाइस सेटिंग्स में सक्षम करें।'
-              : 'Camera permission is required. Please enable it in your device settings.',
-          force: true);
+      _ttsService.speak(_lang.voice(VoiceKey.cameraPermission), force: true);
       return;
     }
 
@@ -189,11 +189,7 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
           _isCameraInitialized = true;
           _isDetecting = true;
         });
-        _ttsService.speak(
-            _localeCode == 'hi'
-                ? 'कैमरा तैयार है। AI से दृश्य का विश्लेषण करने के लिए Describe बटन दबाएँ।'
-                : 'Camera ready. Tap Describe to analyze your surroundings via AI.',
-            force: true);
+        _ttsService.speak(_lang.voice(VoiceKey.cameraReady), force: true);
       }
     } catch (e) {
       if (mounted) {
@@ -230,9 +226,11 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
     try {
       _localeCode = await UserSettingsService.getLocaleCode();
       await _ttsService.setLocale(_localeCode);
-      if (_localeCode == 'hi' && mounted) {
+      if (mounted) {
         setState(() {
-          _lastDescription = 'पहचान शुरू करने के लिए कैमरा किसी ओर रखें...';
+          // Show the analyzing prompt in the current language so the
+          // description card is consistent before the first scan.
+          _lastDescription = _lang.voice(VoiceKey.analyzingScene);
         });
       }
     } catch (_) {}
@@ -275,15 +273,13 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
     setState(() {
       _isDescribing = true;
       _isSpeakingDescription = false;
-      _lastDescription = _localeCode == 'hi' ? 'AI से दृश्य का विश्लेषण हो रहा है...' : 'Analyzing scene with AI...';
+      _lastDescription = _lang.voice(VoiceKey.analyzingScene);
       _descriptionSource = null;
       _mlKitObjects = [];
     });
     HapticFeedback.selectionClick();
     await _ttsService.stopSpeaking();
-    _ttsService.speak(
-        _localeCode == 'hi' ? 'AI से दृश्य का विश्लेषण हो रहा है...' : 'Analyzing scene with AI...',
-        force: true);
+    _ttsService.speak(_lang.voice(VoiceKey.analyzingScene), force: true);
 
     try {
       // 1. Capture photo from camera feed
@@ -375,14 +371,9 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
       }
     } catch (e) {
       if (mounted) {
-        final bool isHindi = _localeCode == 'hi';
         final String errorMsg = e.toString().contains('429')
-            ? (isHindi
-                ? 'AI विज़न मॉडल की अस्थायी सीमा पूरी हो गई। कृपया कुछ क्षण प्रतीक्षा करें।'
-                : 'AI Vision models reached a temporary limit. Please wait a moment.')
-            : (isHindi
-                ? 'AI विज़न त्रुटि: ${e.toString()}'
-                : 'AI Vision Error: ${e.toString()}');
+            ? _lang.errorRateLimit()
+            : 'AI Vision Error: ${e.toString()}';
         setState(() {
           _lastDescription = errorMsg;
           _descriptionSource = '⚠️ Error';
@@ -410,11 +401,7 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
       _isCameraInitialized = false;
     });
 
-    _ttsService.speak(
-        _localeCode == 'hi'
-            ? 'स्वयंसेवक से जोड़ रहे हैं...'
-            : 'Connecting you to a volunteer for help...',
-        force: true);
+    _ttsService.speak(_lang.voice(VoiceKey.connectingVolunteer), force: true);
 
     // Now dispose the saved camera controller reference safely
     try {
@@ -443,20 +430,12 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
         debugPrint('[AI Assist] Call request failed: $e');
         if (mounted) {
           setState(() => _isEscalating = false);
-          _ttsService.speak(
-              _localeCode == 'hi'
-                  ? 'कनेक्ट करने में विफल। कृपया पुनः प्रयास करें।'
-                  : 'Failed to connect. Please try again.',
-              force: true);
+          _ttsService.speak(_lang.voice(VoiceKey.connectFailed), force: true);
         }
       }
     } else {
       setState(() => _isEscalating = false);
-      _ttsService.speak(
-          _localeCode == 'hi'
-              ? 'मदद के लिए कॉल करने के लिए आपको साइन इन होना चाहिए।'
-              : 'You need to be signed in to call for help.',
-          force: true);
+      _ttsService.speak(_lang.voice(VoiceKey.signInToCall), force: true);
     }
   }
 
@@ -538,13 +517,13 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
                           foregroundColor: Colors.white,
                           side: const BorderSide(color: Colors.white38),
                         ),
-                        child: Text(_localeCode == 'hi' ? 'सेटिंग्स खोलें' : 'Open Settings'),
+                        child: Text(_lang.voice(VoiceKey.openSettings)),
                       ),
                     ] else ...[
                       const CircularProgressIndicator(color: Colors.white54),
                       const SizedBox(height: VBSpacing.md),
                       Text(
-                        _localeCode == 'hi' ? '\u0915\u0948\u092e\u0930\u093e \u0936\u0941\u0930\u0942 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...' : 'Starting camera...',
+                        _lang.voice(VoiceKey.startingCamera),
                         style: const TextStyle(color: Colors.white38, fontSize: 14),
                       ),
                     ],
@@ -625,10 +604,10 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
                           const SizedBox(width: VBSpacing.sm),
                           Text(
                             _isDescribing
-                                ? (_localeCode == 'hi' ? 'विश्लेषण...' : 'Analyzing...')
+                                ? _lang.voice(VoiceKey.analyzing)
                                 : _isCameraInitialized
-                                    ? (_localeCode == 'hi' ? 'AI तैयार' : 'AI Ready')
-                                    : (_localeCode == 'hi' ? 'शुरू...' : 'Starting...'),
+                                    ? _lang.voice(VoiceKey.aiReady)
+                                    : _lang.voice(VoiceKey.starting),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -710,7 +689,7 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
                       SizedBox(width: VBSpacing.sm),
                       Expanded(
                         child: Text(
-                          _localeCode == 'hi' ? 'स्वयंसेवक से जोड़ रहे हैं...' : 'Connecting you to a volunteer...',
+                          _lang.voice(VoiceKey.connectingVolunteer),
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -888,10 +867,10 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
                                   : Icons.remove_red_eye_rounded),
                           label: Text(
                             _isDescribing
-                                ? (_localeCode == 'hi' ? 'विश्लेषण...' : 'Analyzing...')
+                                ? _lang.voice(VoiceKey.analyzing)
                                 : _isSpeakingDescription
-                                    ? (_localeCode == 'hi' ? 'रुकें' : 'Stop')
-                                    : (_localeCode == 'hi' ? 'दृश्य बताएँ' : 'Describe Scene'),
+                                    ? _lang.voice(VoiceKey.stop)
+                                    : _lang.voice(VoiceKey.describeScene),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -910,7 +889,7 @@ class _AIAssistScreenState extends State<AIAssistScreen> with WidgetsBindingObse
                         child: OutlinedButton.icon(
                           onPressed: _isEscalating ? null : _requestVolunteer,
                           icon: const Icon(Icons.call_rounded),
-                          label: Text(_localeCode == 'hi' ? 'मदद' : 'Call Help'),
+                          label: Text(_lang.voice(VoiceKey.callHelp)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: isDark
                                 ? VBDarkColors.secondary

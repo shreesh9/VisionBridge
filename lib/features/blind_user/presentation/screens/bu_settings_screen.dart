@@ -88,6 +88,11 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
     }
   }
 
+  /// Voice narration strings for the current language — spoken confirmations
+  /// come from the registry so they're always in the selected language.
+  VBLanguage get _lang =>
+      VBLanguages.byCode(ref.read(localeProvider).languageCode);
+
   /// Voice-language picker. Visual UI stays EN/Hindi; this picks the language
   /// for TTS, AI descriptions, OCR read-aloud and voice commands.
   void _showLanguagePicker(BuildContext context, Color primaryColor) {
@@ -129,10 +134,10 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
                             .setLocale(Locale(lang.code));
                         if (!sheetCtx.mounted) return;
                         _ttsPreview.setLocale(lang.code);
+                        // Confirm in the NEW language with that language's
+                        // own string (registry), so voice + language match.
                         _ttsPreview.speak(
-                          lang.code == 'en'
-                              ? 'Language changed to English'
-                              : '${lang.englishName} selected',
+                          lang.voice(VoiceKey.languageChanged),
                           force: true,
                         );
                       },
@@ -406,7 +411,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
               setState(() => _ttsSpeed = v);
               UserSettingsService.setTTSSpeed(v);
               _ttsPreview.setSpeed(v);
-              _ttsPreview.speak(isHindi ? 'यह मेरी बोलने की गति है' : 'This is my speaking speed', force: true);
+              _ttsPreview.speak(_lang.voice(VoiceKey.speedPreview), force: true);
             },
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
@@ -427,7 +432,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
               setState(() => _ttsPitch = v);
               UserSettingsService.setTTSPitch(v);
               _ttsPreview.setPitch(v);
-              _ttsPreview.speak(isHindi ? 'यह मेरी आवाज़ की पिच है' : 'This is my voice pitch', force: true);
+              _ttsPreview.speak(_lang.voice(VoiceKey.pitchPreview), force: true);
             },
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
@@ -443,15 +448,8 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
               HapticFeedback.selectionClick();
               setState(() => _userAgeGroup = newGroup);
               await UserSettingsService.setUserAgeGroup(newGroup);
-              final groupLabel = isHindi
-                  ? (newGroup == 'genZ'
-                      ? 'Gen Z अनौपचारिक शैली'
-                      : (newGroup == 'genAlpha' ? 'Gen Alpha ऊर्जावान शैली' : 'सामान्य वयस्क शैली'))
-                  : (newGroup == 'genZ'
-                      ? 'Gen Z casual vibes'
-                      : (newGroup == 'genAlpha' ? 'Gen Alpha energetic tone' : 'Standard adult tone'));
               _ttsPreview.speak(
-                isHindi ? 'AI वॉइस पर्सोना $groupLabel में बदला गया' : 'AI voice persona updated to $groupLabel',
+                _lang.personaUpdated(newGroup),
                 force: true,
               );
             },

@@ -131,6 +131,19 @@ class TTSSTTService {
     }
   }
 
+  /// Resolve which voice will actually speak text detected as [detectedCode].
+  /// Public so callers (e.g. the OCR prefix) can match their announcements to
+  /// the same language the utterance will use.
+  String effectiveVoiceLanguageCode(String detectedCode) {
+    if (detectedCode == 'hi') {
+      final appLang = VBLanguages.byCode(_currentLocaleCode);
+      if (appLang.scriptFlag == VoiceScript.devanagari && appLang.code != 'hi') {
+        return appLang.code;
+      }
+    }
+    return detectedCode;
+  }
+
   /// Speak text in a specific language, then restore the current app locale
   /// once the utterance completes.
   /// Used by OCR to read scanned text in the text's language, independent of
@@ -151,13 +164,7 @@ class TTSSTTService {
     // Devanagari is shared by Hindi AND Marathi. OCR only reports the script
     // ('hi' for any Devanagari text), so if the user's voice language is
     // another Devanagari language, speak with that voice instead.
-    String effectiveCode = langCode;
-    if (langCode == 'hi') {
-      final appLang = VBLanguages.byCode(_currentLocaleCode);
-      if (appLang.scriptFlag == VoiceScript.devanagari && appLang.code != 'hi') {
-        effectiveCode = appLang.code;
-      }
-    }
+    final String effectiveCode = effectiveVoiceLanguageCode(langCode);
 
     // Temporarily switch to the detected text language
     final targetTag = _ttsLocaleTag(effectiveCode);

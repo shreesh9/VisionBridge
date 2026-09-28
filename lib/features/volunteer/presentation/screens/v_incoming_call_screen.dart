@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/call_orchestration_service.dart';
 import '../../../../services/tts_stt_service.dart';
 import '../../../../services/user_settings_service.dart';
@@ -42,6 +43,10 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
   bool _isClaimedByOther = false;
   StreamSubscription? _docSub;
   String _localeCode = 'en';
+
+  /// Voice narration strings for the current language — all spoken prompts
+  /// come from the registry so narration is always in the selected language.
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   @override
   void initState() {
@@ -98,7 +103,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
           });
           HapticFeedback.mediumImpact();
           _ttsService.speak(
-            _localeCode == 'hi' ? 'मदद अनुरोध उपयोगकर्ता द्वारा रद्द कर दिया गया।' : 'The help request was cancelled by the user.',
+            _lang.voice(VoiceKey.requestCancelled),
             force: true,
           );
           Future.delayed(const Duration(milliseconds: 1500), () {
@@ -116,7 +121,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
           });
           HapticFeedback.mediumImpact();
           _ttsService.speak(
-            _localeCode == 'hi' ? 'यह कॉल किसी अन्य स्वयंसेवक ने उठा लिया।' : 'This call was picked up by another volunteer.',
+            _lang.voice(VoiceKey.callClaimedByOther),
             force: true,
           );
           Future.delayed(const Duration(milliseconds: 2000), () {
@@ -133,9 +138,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
     Future.doWhile(() async {
       if (!mounted || _isConnecting) return false;
       await _ttsService.speak(
-        _localeCode == 'hi'
-            ? 'एक दृष्टिबाधित उपयोगकर्ता से मदद का अनुरोध आया है।'
-            : 'Incoming help request from a visually impaired user.',
+        _lang.voice(VoiceKey.incomingCallAnnouncement),
         force: true,
       );
       await Future.delayed(const Duration(milliseconds: 3500));
