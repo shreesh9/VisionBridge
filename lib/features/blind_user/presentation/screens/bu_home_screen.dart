@@ -18,7 +18,6 @@ import '../../../../shared/widgets/sos_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/locale/locale_provider.dart';
-import '../../../../services/user_settings_service.dart';
 
 class BUHomeScreen extends ConsumerStatefulWidget {
   const BUHomeScreen({super.key});

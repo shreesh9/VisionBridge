@@ -15,6 +15,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../services/auth_service.dart';
@@ -58,6 +59,56 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
         _profilePhotoUrl = firestorePhoto ?? cachedPhoto;
       });
     }
+  }
+
+  /// Voice-language picker. Visual UI stays EN/Hindi; this picks the language
+  /// for TTS and voice commands.
+  void _showLanguagePicker(BuildContext context, Color primaryColor) {
+    final currentCode = ref.read(localeProvider).languageCode;
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(VBSpacing.md),
+              child: Text(
+                'Choose Voice Language / आवाज़ की भाषा चुनें',
+                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final lang in VBLanguages.all)
+                    ListTile(
+                      title: Text(lang.nativeName,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(lang.englishName),
+                      trailing: lang.code == currentCode
+                          ? Icon(Icons.check_circle_rounded, color: primaryColor)
+                          : null,
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        HapticFeedback.selectionClick();
+                        await ref
+                            .read(localeProvider.notifier)
+                            .setLocale(Locale(lang.code));
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showEditProfileDialog(
@@ -279,32 +330,18 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           ),
           const SizedBox(height: VBSpacing.sm),
 
-          // Language Picker
+          // Language Picker (voice layer: EN, HI, MR, TA, TE, BN, KN)
           _Tile(
             icon: Icons.language_rounded,
             title: 'Language / भाषा',
-            trailing: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'en', label: Text('EN')),
-                ButtonSegment(value: 'hi', label: Text('हि')),
-              ],
-              selected: {ref.watch(localeProvider).languageCode},
-              onSelectionChanged: (selected) {
-                HapticFeedback.selectionClick();
-                ref.read(localeProvider.notifier).setLocale(Locale(selected.first));
-              },
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                backgroundColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return primaryColor.withOpacity(0.15);
-                  }
-                  return Colors.transparent;
-                }),
-              ),
-              showSelectedIcon: false,
+            subtitle: isHindi
+                ? 'आवाज़ और आवाज़ आदेश की भाषा'
+                : 'Voice & voice commands',
+            trailing: Text(
+              VBLanguages.byCode(currentLocale.languageCode).nativeName,
+              style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
             ),
+            onTap: () => _showLanguagePicker(context, primaryColor),
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
             textColor: textColor,

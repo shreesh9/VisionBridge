@@ -7,22 +7,24 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/locale_provider.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/firestore_service.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
 
@@ -216,6 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
     final subtextColor =
@@ -238,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Semantics(
                 header: true,
                 child: Text(
-                  'Welcome to\nVisionBridge',
+                  isHindi ? 'विज़नब्रिज में\nस्वागत है' : 'Welcome to\nVisionBridge',
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w700,
@@ -248,7 +251,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: VBSpacing.sm),
               Text(
-                'Sign in with your Google account or via verification code to start using the app.',
+                isHindi
+                    ? 'ऐप उपयोग शुरू करने के लिए Google खाते या सत्यापन कोड से साइन इन करें।'
+                    : 'Sign in with your Google account or via verification code to start using the app.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: subtextColor,
                       height: 1.45,
@@ -287,9 +292,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(width: VBSpacing.md),
-                        const Text(
-                          'Sign In with Google',
-                          style: TextStyle(
+                        Text(
+                          isHindi ? 'Google से साइन इन करें' : 'Sign In with Google',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
@@ -307,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: VBSpacing.md),
                       child: Text(
-                        'or use verification code',
+                        isHindi ? 'या सत्यापन कोड से साइन इन करें' : 'or use verification code',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: subtextColor,
                             ),
@@ -334,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         textInputAction: TextInputAction.done,
                         autocorrect: false,
                         decoration: InputDecoration(
-                          labelText: 'Phone Number',
+                          labelText: isHindi ? 'फ़ोन नंबर' : 'Phone Number',
                           hintText: '+1 555-555-5555',
                           prefixIcon: const Icon(Icons.phone_iphone_rounded),
                           suffixIcon: IconButton(
@@ -363,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: _isLoading
                             ? const CircularProgressIndicator()
-                            : const Text('Send Verification Code'),
+                            : Text(isHindi ? 'सत्यापन कोड भेजें' : 'Send Verification Code'),
                       ),
                     ),
                   ],
@@ -379,8 +384,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         autocorrect: false,
                         maxLength: 6,
                         decoration: InputDecoration(
-                          labelText: 'Verification Code',
-                          hintText: 'Enter 6-digit code',
+                          labelText: isHindi ? 'सत्यापन कोड' : 'Verification Code',
+                          hintText: isHindi ? '6 अंकों का कोड दर्ज करें' : 'Enter 6-digit code',
                           prefixIcon: const Icon(Icons.lock_clock_outlined),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: outlineColor),
@@ -406,7 +411,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       _otpController.clear();
                                     });
                                   },
-                            child: const Text('Change Number'),
+                            child: Text(isHindi ? 'नंबर बदलें' : 'Change Number'),
                           ),
                         ),
                         const SizedBox(width: VBSpacing.md),
@@ -415,7 +420,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _isLoading ? null : _handleVerifyOTP,
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text('Verify Code'),
+                                : Text(isHindi ? 'कोड सत्यापित करें' : 'Verify Code'),
                           ),
                         ),
                       ],

@@ -38,8 +38,16 @@ android {
     }
 }
 
-flutter {
-    source = "../.."
+dependencies {
+    // ML Kit text-recognition script models.
+    // CRITICAL: google_mlkit_text_recognition bundles ONLY the Latin model
+    // (implementation) — Devanagari/Chinese/Japanese/Korean are declared
+    // 'compileOnly' in the plugin, so their native models are NOT packaged in
+    // the APK. Using a Devanagari recognizer without this bundled dependency
+    // crashes the app natively (no Dart exception) right after a scan.
+    // Add other scripts the same way if ever needed.
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.google.mlkit:text-recognition-devanagari:16.0.1'
 }
 
 configurations.all {

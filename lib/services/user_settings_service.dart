@@ -159,7 +159,7 @@ class UserSettingsService {
     return prefs.getString(_keyLocale) ?? 'en';
   }
 
-  /// Save locale code ('en' or 'hi')
+  /// Save locale code ('en', 'hi', 'mr', 'ta', 'te', 'bn', 'kn')
   static Future<void> setLocaleCode(String code) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLocale, code);

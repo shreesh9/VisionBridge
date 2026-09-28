@@ -8,22 +8,26 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/locale_provider.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/tts_stt_service.dart';
+import '../../../../services/user_settings_service.dart';
 
-class RoleSelectionScreen extends StatefulWidget {
+class RoleSelectionScreen extends ConsumerStatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+  ConsumerState<RoleSelectionScreen> createState() =>
+      _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   UserRole? _selectedRole;
@@ -40,8 +44,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     if (currentUser?.displayName != null && currentUser!.displayName!.isNotEmpty) {
       _nameController.text = currentUser.displayName!;
     }
-    _ttsService.initialize().then((_) {
-      _ttsService.speak('Profile setup. Please select your role and enter your name to continue.');
+    _ttsService.initialize().then((_) async {
+      String code = 'en';
+      try {
+        code = await UserSettingsService.getLocaleCode();
+      } catch (_) {}
+      await _ttsService.setLocale(code);
+      _ttsService.speak(code == 'hi'
+          ? 'प्रोफ़ाइल सेटअप। जारी रखने के लिए अपनी भूमिका चुनें और अपना नाम दर्ज करें।'
+          : 'Profile setup. Please select your role and enter your name to continue.');
     });
   }
 
@@ -54,10 +65,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   Future<void> _handleSubmit() async {
     if (_selectedRole == null) {
+      final isHindi = ref.read(localeProvider).languageCode == 'hi';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select your role')),
+        SnackBar(content: Text(isHindi ? 'कृपया अपनी भूमिका चुनें' : 'Please select your role')),
       );
-      _ttsService.speak('Please select a role.');
+      _ttsService.speak(isHindi ? 'कृपया एक भूमिका चुनें।' : 'Please select a role.');
       return;
     }
 
@@ -128,6 +140,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
     final subtextColor =
@@ -150,7 +163,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               Semantics(
                 header: true,
                 child: Text(
-                  'Set up profile',
+                  isHindi ? 'प्रोफ़ाइल सेटअप' : 'Set up profile',
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w700,
@@ -159,7 +172,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               ),
               const SizedBox(height: VBSpacing.sm),
               Text(
-                'Let us know how you will use VisionBridge.',
+                isHindi
+                    ? 'बताएँ कि आप VisionBridge का उपयोग कैसे करेंगे।'
+                    : 'Let us know how you will use VisionBridge.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: subtextColor,
                     ),
@@ -168,7 +183,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
               // Role cards
               Text(
-                'I am...',
+                isHindi ? 'मैं हूँ...' : 'I am...',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: textColor,
                     ),
@@ -179,13 +194,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   Expanded(
                     child: _RoleCard(
                       icon: Icons.accessibility_new_rounded,
-                      label: 'Visually\nImpaired',
-                      subtitle: 'I need assistance',
+                      label: isHindi ? 'दृष्टिबाधित' : 'Visually\nImpaired',
+                      subtitle: isHindi ? 'मुझे सहायता चाहिए' : 'I need assistance',
                       isSelected: _selectedRole == UserRole.blindUser,
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedRole = UserRole.blindUser);
-                        _ttsService.speak('Selected Visually Impaired role.');
+                        _ttsService.speak(isHindi
+                            ? 'दृष्टिबाधित भूमिका चुनी गई।'
+                            : 'Selected Visually Impaired role.');
                       },
                       primaryColor: primaryColor,
                       surfaceColor: surfaceColor,
@@ -199,13 +216,15 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   Expanded(
                     child: _RoleCard(
                       icon: Icons.volunteer_activism_rounded,
-                      label: 'Sighted\nVolunteer',
-                      subtitle: 'I want to help',
+                      label: isHindi ? 'स्वयंसेवक' : 'Sighted\nVolunteer',
+                      subtitle: isHindi ? 'मैं मदद करना चाहता हूँ' : 'I want to help',
                       isSelected: _selectedRole == UserRole.volunteer,
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedRole = UserRole.volunteer);
-                        _ttsService.speak('Selected Sighted Volunteer role.');
+                        _ttsService.speak(isHindi
+                            ? 'स्वयंसेवक भूमिका चुनी गई।'
+                            : 'Selected Sighted Volunteer role.');
                       },
                       primaryColor: primaryColor,
                       surfaceColor: surfaceColor,
@@ -231,8 +250,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         textInputAction: TextInputAction.done,
                         textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
-                          labelText: 'Display Name',
-                          hintText: 'Enter your name',
+                          labelText: isHindi ? 'प्रदर्शित नाम' : 'Display Name',
+                          hintText: isHindi ? 'अपना नाम दर्ज करें' : 'Enter your name',
                           prefixIcon: const Icon(Icons.person_outline_rounded),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: outlineColor),
@@ -245,7 +264,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Name is required';
+                            return isHindi ? 'नाम आवश्यक है' : 'Name is required';
                           }
                           return null;
                         },
@@ -259,7 +278,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                         onPressed: _isLoading ? null : _handleSubmit,
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Start Using VisionBridge'),
+                            : Text(isHindi ? 'VisionBridge शुरू करें' : 'Start Using VisionBridge'),
                       ),
                     ),
                   ],

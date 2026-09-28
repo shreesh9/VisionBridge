@@ -7,26 +7,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/constants.dart';
+import '../../../../core/locale/locale_provider.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/fcm_service.dart';
 
 
 import '../../../../services/user_settings_service.dart';
 
-class VHomeScreen extends StatefulWidget {
+class VHomeScreen extends ConsumerStatefulWidget {
   const VHomeScreen({super.key});
 
   @override
-  State<VHomeScreen> createState() => _VHomeScreenState();
+  ConsumerState<VHomeScreen> createState() => _VHomeScreenState();
 }
 
-class _VHomeScreenState extends State<VHomeScreen> {
+class _VHomeScreenState extends ConsumerState<VHomeScreen> {
   bool _isOnline = false;
   bool _isTogglingOnline = false;
   int _totalCallsHelped = 0;
@@ -170,6 +172,11 @@ class _VHomeScreenState extends State<VHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Live-update the UI when the language toggle changes in settings.
+    final localeCode = ref.watch(localeProvider).languageCode;
+    if (localeCode != _localeCode) {
+      _localeCode = localeCode;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
@@ -234,8 +241,9 @@ class _VHomeScreenState extends State<VHomeScreen> {
               // === Online/Offline Toggle ===
               Semantics(
                 toggled: _isOnline,
-                label:
-                    'Availability toggle. Currently ${_isOnline ? "online" : "offline"}. Tap to ${_isOnline ? "go offline" : "go online"}.',
+                label: isHindi
+                    ? 'उपलब्धता टॉगल। वर्तमान में ${_isOnline ? "ऑनलाइन" : "ऑफ़लाइन"}. ${_isOnline ? "ऑफ़लाइन" : "ऑनलाइन"} होने के लिए टैप करें।'
+                    : 'Availability toggle. Currently ${_isOnline ? "online" : "offline"}. Tap to ${_isOnline ? "go offline" : "go online"}.',
                 child: GestureDetector(
                   onTap: _toggleOnline,
                   child: AnimatedContainer(

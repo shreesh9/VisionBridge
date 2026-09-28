@@ -16,6 +16,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../services/auth_service.dart';
@@ -85,6 +86,64 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
         _profilePhotoUrl = firestorePhoto ?? cachedPhoto;
       });
     }
+  }
+
+  /// Voice-language picker. Visual UI stays EN/Hindi; this picks the language
+  /// for TTS, AI descriptions, OCR read-aloud and voice commands.
+  void _showLanguagePicker(BuildContext context, Color primaryColor) {
+    final currentCode = ref.read(localeProvider).languageCode;
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(VBSpacing.md),
+              child: Text(
+                'Choose Voice Language / आवाज़ की भाषा चुनें',
+                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final lang in VBLanguages.all)
+                    ListTile(
+                      title: Text(lang.nativeName,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(lang.englishName),
+                      trailing: lang.code == currentCode
+                          ? Icon(Icons.check_circle_rounded, color: primaryColor)
+                          : null,
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        HapticFeedback.selectionClick();
+                        await ref
+                            .read(localeProvider.notifier)
+                            .setLocale(Locale(lang.code));
+                        if (!sheetCtx.mounted) return;
+                        _ttsPreview.setLocale(lang.code);
+                        _ttsPreview.speak(
+                          lang.code == 'en'
+                              ? 'Language changed to English'
+                              : '${lang.englishName} selected',
+                          force: true,
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showEditProfileDialog(
@@ -311,41 +370,21 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           ),
           const SizedBox(height: VBSpacing.sm),
 
-          // Language Picker
+          // Language Picker (voice layer: EN, HI, MR, TA, TE, BN, KN)
           _SettingsTile(
             icon: Icons.language_rounded,
             title: 'Language / भाषा',
+            subtitle: isHindi
+                ? 'आवाज़, AI विवरण और आवाज़ आदेश की भाषा'
+                : 'Voice, AI descriptions & voice commands',
             trailing: Semantics(
-              label: 'Language selector. Current: ${ref.watch(localeProvider).languageCode == 'hi' ? 'Hindi' : 'English'}',
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'en', label: Text('EN')),
-                  ButtonSegment(value: 'hi', label: Text('हि')),
-                ],
-                selected: {ref.watch(localeProvider).languageCode},
-                onSelectionChanged: (selected) async {
-                  HapticFeedback.selectionClick();
-                  final code = selected.first;
-                  ref.read(localeProvider.notifier).setLocale(Locale(code));
-                  _ttsPreview.setLocale(code);
-                  _ttsPreview.speak(
-                    code == 'hi' ? 'भाषा हिन्दी में बदल दी गई' : 'Language changed to English',
-                    force: true,
-                  );
-                },
-                style: ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return primaryColor.withOpacity(0.15);
-                    }
-                    return Colors.transparent;
-                  }),
-                ),
-                showSelectedIcon: false,
+              label: 'Language selector. Current: ${VBLanguages.byCode(ref.watch(localeProvider).languageCode).englishName}',
+              child: Text(
+                VBLanguages.byCode(currentLocale.languageCode).nativeName,
+                style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
               ),
             ),
+            onTap: () => _showLanguagePicker(context, primaryColor),
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
             textColor: textColor,

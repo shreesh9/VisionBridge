@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../shared/widgets/sos_button.dart';
 import '../../../../services/firestore_service.dart';
+import '../../../../services/user_settings_service.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 
 class BUCallHistoryScreen extends StatefulWidget {
@@ -83,7 +84,6 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
     final surfaceColor = isDark ? VBDarkColors.surface : VBLightColors.surface;
     final outlineColor = isDark ? VBDarkColors.outline : VBLightColors.outline;
     final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
-    final successColor = isDark ? VBDarkColors.success : VBLightColors.success;
 
     final bool isHindi = _localeCode == 'hi';
 

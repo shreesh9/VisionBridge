@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
 import 'user_settings_service.dart';
+import '../core/locale/supported_voice_languages.dart';
 
 class VisionResult {
 
@@ -148,24 +149,56 @@ class VisionAIService {
         : 'data:$mimeType;base64,$cleanBase64';
 
     String lastError = '';
+    // NOTE: Groq deprecated ALL llama-3.2/llama-4 vision models (confirmed
+    // against console.groq.com/docs/models, Sept 2026). qwen/qwen3.8-27b is
+    // their only current multimodal model (text+images, OCR & visual QA,
+    // multilingual → supports pure-Hindi descriptions). If this model is ever
+    // deprecated, re-check https://console.groq.com/docs/model/qwen/qwen3.8-27b
+    // for the successor and update this single ID.
     const List<String> groqModels = [
-      'llama-3.2-11b-vision-preview',
-      'llama-3.2-90b-vision-preview',
+      'qwen/qwen3.8-27b',
     ];
 
-    // Read user's language preference for locale-aware prompts
+    // Read user's language preference for locale-aware prompts.
+    // Multi-language voice layer: en, hi, mr, ta, te, bn, kn (see
+    // supported_voice_languages.dart). Prompts are generated per language.
     String localeCode = 'en';
+    String ageGroup = 'adult';
     try {
       localeCode = await UserSettingsService.getLocaleCode();
+      ageGroup = await UserSettingsService.getUserAgeGroup();
     } catch (_) {}
+    final VBLanguage lang = VBLanguages.byCode(localeCode);
+    final bool isIndic = lang.scriptFlag != VoiceScript.latin;
 
-    final String systemPrompt = localeCode == 'hi'
-        ? 'आप दृष्टिबाधित उपयोगकर्ताओं के लिए एक AI दृश्य सहायक हैं। हमेशा केवल और केवल देवनागरी लिपि हिंदी (शुद्ध हिन्दी) में उत्तर दें। अंग्रेजी अक्षरों या अंग्रेजी शब्दों का उपयोग बिल्कुल न करें।'
-        : 'You are an AI visual assistant helping blind users. Describe what is in front of the camera in 1-2 clear, direct sentences.';
+    // Age-persona tone (wired from BU Settings "AI Persona Tone" tile).
+    // Adult keeps the neutral default — no extra instruction needed.
+    final String personaSuffix = switch (ageGroup) {
+      'genZ' =>
+        ' Use a casual, friendly Gen Z tone with relatable language, while staying clear and accurate.',
+      'genAlpha' =>
+        ' Use an upbeat, energetic, encouraging tone suited for a young user, with simple words.',
+      _ => '',
+    };
 
-    final String userPrompt = localeCode == 'hi'
-        ? 'कैमरे के सामने क्या दिख रहा है? 1-2 स्पष्ट वाक्यों में शुद्ध हिन्दी में बताओ।'
-        : 'What do you see? Describe in 1-2 clear sentences. Identify exact objects.';
+    final String systemPrompt;
+    final String userPrompt;
+    if (!isIndic) {
+      // English (default) — persona applies.
+      systemPrompt =
+          'You are an AI visual assistant helping blind users. Describe what is in front of the camera in 1-2 clear, direct sentences.$personaSuffix';
+      userPrompt =
+          'What do you see? Describe in 1-2 clear sentences. Identify exact objects.';
+    } else {
+      // Indic languages: strict "pure <language> script only" instruction so
+      // TTS never reads English words with an Indic voice (the original
+      // Hindi-accent bug).
+      final String langName = lang.promptLanguage;
+      systemPrompt =
+          'You are an AI visual assistant helping blind users. Always respond ONLY in pure $langName, written entirely in its native script. Never use English letters or English words.$personaSuffix';
+      userPrompt =
+          'What do you see in front of the camera? Describe in 1-2 clear sentences in pure $langName.';
+    }
 
     // --- Provider 1: Groq Vision API (llama-3.2-11b-vision-preview / llama-3.2-90b-vision-preview) ---
     if (groqKeys.isNotEmpty) {
@@ -207,6 +240,9 @@ class VisionAIService {
                 ],
                 'max_tokens': 200,
                 'temperature': 0.1,
+                // Instruct mode (no thinking) → fastest short scene
+                // descriptions. reasoning_effort is documented for this model.
+                'reasoning_effort': 'none',
               },
             );
 
@@ -249,6 +285,9 @@ class VisionAIService {
           'ℹ️ OpenRouter fallback skipped: no OPENROUTER_API_KEY configured in --dart-define or assets/.env.');
     } else {
       final List<String> openRouterQwenModels = [
+        // OpenRouter fallback kept aligned with Groq's current multimodal
+        // generation; the free tier variant first, then paid.
+        'qwen/qwen3.8-27b:free',
         'qwen/qwen-2.5-vl-72b-instruct:free',
         'qwen/qwen-2.5-vl-72b-instruct',
       ];
@@ -284,6 +323,7 @@ class VisionAIService {
               ],
               'max_tokens': 200,
               'temperature': 0.1,
+              'reasoning_effort': 'none',
             },
           );
 
@@ -294,7 +334,7 @@ class VisionAIService {
               final cleanedText = _cleanModelResponse(content, localeCode);
               return VisionResult(
                 description: cleanedText,
-                provider: '🤖 Qwen 2.5 Vision AI ($model)',
+                provider: '🤖 Qwen Vision AI ($model)',
               );
             }
           }
@@ -310,15 +350,15 @@ class VisionAIService {
 
     // --- Provider 3: On-Device Detection Fallback ---
     if (detectedObjects.isNotEmpty) {
-      String fallbackDesc;
-      if (localeCode == 'hi') {
-        // Never pass raw English detector labels into the hi-IN synthesizer.
+      final String fallbackDesc;
+      if (isIndic) {
+        // Never pass raw English detector labels into an Indic synthesizer.
         // Translate what we recognise, and drop the rest rather than letting
-        // Android phonetically mangle English words with Hindi voice rules.
+        // Android phonetically mangle English words with Indic voice rules.
         final List<String> hindiLabels = _localizeLabelsHi(detectedObjects);
         fallbackDesc = hindiLabels.isNotEmpty
-            ? 'मुझे सामने ${hindiLabels.join(", ")} दिख रहा है। अधिक जानने के लिए दोबारा दृश्य बताएँ बटन दबाएँ, या मदद के लिए कॉल करें।'
-            : 'मुझे सामने कुछ वस्तुएँ दिख रही हैं। अधिक जानने के लिए दोबारा दृश्य बताएँ बटन दबाएँ, या मदद के लिए कॉल करें।';
+            ? lang.fallbackWithObjects(hindiLabels)
+            : lang.fallbackNoObjects();
       } else {
         fallbackDesc =
             'I see ${detectedObjects.join(", ")} ahead. If you want to know anything else, tap on the Describe button again or call for help.';
@@ -329,14 +369,10 @@ class VisionAIService {
       );
     }
 
-    String userFriendlyError = localeCode == 'hi'
-        ? 'AI विज़न मॉडल अभी व्यस्त हैं। कृपया कुछ क्षण बाद पुनः प्रयास करें।'
-        : 'AI vision models are currently busy. Please try again in a moment.';
+    String userFriendlyError = lang.errorBusy();
     if (lastError.contains('429') ||
         lastError.toLowerCase().contains('rate limit')) {
-      userFriendlyError = localeCode == 'hi'
-          ? 'AI विज़न मॉडल की अस्थायी सीमा पूरी हो गई। कृपया कुछ सेकंड प्रतीक्षा करें और पुनः प्रयास करें।'
-          : 'AI vision models reached a temporary limit. Please wait a few seconds and try again.';
+      userFriendlyError = lang.errorRateLimit();
     }
 
     return VisionResult(
@@ -347,6 +383,9 @@ class VisionAIService {
   }
 
   /// Minimal English -> Hindi dictionary for on-device detector labels.
+  /// Shared by ALL Indic voice languages: object words are transliterated
+  /// naturally across languages (मेज़/मेज/ಮೇಜೆ are recognizable), and the
+  /// sentence frame carries the selected language's grammar.
   /// Keys are lowercase. Anything absent is dropped rather than spoken in
   /// English by the hi-IN synthesizer.
   static const Map<String, String> _hiLabels = {
@@ -440,6 +479,7 @@ class VisionAIService {
 
   /// Clean model response: strip all meta/reasoning, keep only physical object descriptions.
   String _cleanModelResponse(String rawText, String localeCode) {
+    final VBLanguage lang = VBLanguages.byCode(localeCode);
     String cleaned = rawText;
 
     // 1. Remove <think>...</think> reasoning blocks
@@ -455,20 +495,15 @@ class VisionAIService {
     cleaned = cleaned.replaceAll(RegExp(r'^[\s]*[-•]\s*', multiLine: true), '');
     cleaned = cleaned.replaceAll(RegExp(r'^\s*\d+\.\s*', multiLine: true), '');
 
-    // For Hindi responses, skip the English-specific cleaning and just trim
-    if (localeCode == 'hi') {
-      // Remove markdown and reasoning blocks but preserve Hindi content
+    // For Indic-language responses, skip the English-specific cleaning and
+    // just trim — never let English heuristics mangle native-script content.
+    if (lang.scriptFlag != VoiceScript.latin) {
       cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ').trim();
       if (cleaned.isEmpty) {
-        cleaned = 'कोई विवरण उपलब्ध नहीं है।';
+        cleaned = lang.emptyDescription();
       }
-      // Append Hindi call-to-action if not already present
-      const String hiCta =
-          ' और कुछ जानना हो तो दोबारा दृश्य बताएँ बटन दबाएँ, या मदद के लिए कॉल करें।';
-      if (!cleaned.contains('दृश्य बताएँ') &&
-          !cleaned.contains('कॉल करें')) {
-        cleaned = '$cleaned$hiCta';
-      }
+      // Append this language's call-to-action if not already present
+      cleaned = lang.withCallToAction(cleaned);
       return cleaned;
     }
 

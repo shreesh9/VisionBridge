@@ -334,7 +334,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                             ),
                             const SizedBox(height: VBSpacing.sm),
                             Text(
-                              'Decline',
+                              isHindi ? 'अस्वीकार करें' : 'Decline',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.7),
                                 fontSize: 14,
@@ -385,9 +385,9 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                               ),
                             ),
                             const SizedBox(height: VBSpacing.sm),
-                            const Text(
-                              'Accept',
-                              style: TextStyle(
+                            Text(
+                              isHindi ? 'स्वीकार करें' : 'Accept',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,

@@ -7,24 +7,26 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/locale_provider.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const List<_OnboardingSlide> _slides = [
+  static const List<_OnboardingSlide> _slidesEn = [
     _OnboardingSlide(
       icon: Icons.visibility_rounded,
       title: 'See the world\nthrough VisionBridge',
@@ -45,8 +47,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  static const List<_OnboardingSlide> _slidesHi = [
+    _OnboardingSlide(
+      icon: Icons.visibility_rounded,
+      title: 'VisionBridge के साथ\nदुनिया देखें',
+      description:
+          'आपका AI-संचालित दृश्य सहायक जो आपको हाथ-मुक्त, आवाज़-प्रथम तरीके से रास्ता दिखाने, टेक्स्ट पढ़ने और अपने आस-पास को समझने में मदद करता है।',
+    ),
+    _OnboardingSlide(
+      icon: Icons.auto_awesome_rounded,
+      title: 'AI जानता है\nमदद कब मांगनी है',
+      description:
+          'स्मार्ट पहचान तुरंत नतीजे देने के लिए आपके फ़ोन पर चलती है। जब AI को यकीन नहीं होता, तो यह आपको एक असली स्वयंसेवक से जोड़ता है जो आपकी तरह देख सकता है।',
+    ),
+    _OnboardingSlide(
+      icon: Icons.shield_rounded,
+      title: 'आपकी सुरक्षा के\nलिए बनाया गया',
+      description:
+          'आपातकाल के लिए वन-टैप SOS। लाइव लोकेशन साझा करना। दृश्य सहायता के लिए कैमरा और माइक्रोफ़ोन एक्सेस आवश्यक है — नियंत्रण हमेशा आपके पास रहता है।',
+    ),
+  ];
+
+  List<_OnboardingSlide> _slides(BuildContext context) {
+    // ref.read (not watch): this helper is also called from callbacks like
+    // _nextPage; build() already watches localeProvider for rebuilds.
+    final isHindi = ref.read(localeProvider).languageCode == 'hi';
+    return isHindi ? _slidesHi : _slidesEn;
+  }
+
   void _nextPage() {
-    if (_currentPage < _slides.length - 1) {
+    if (_currentPage < _slides(context).length - 1) {
       HapticFeedback.selectionClick();
       _pageController.nextPage(
         duration: VBDuration.pageTransition,
@@ -78,6 +108,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final subtextColor =
         isDark ? VBDarkColors.onSurfaceVariant : VBLightColors.onSurfaceVariant;
     final dotInactive = isDark ? VBDarkColors.outline : VBLightColors.outline;
+    final slides = _slides(context);
+    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -91,11 +123,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding: const EdgeInsets.all(VBSpacing.md),
                 child: Semantics(
                   button: true,
-                  label: 'Skip onboarding',
+                  label: isHindi ? 'ऑनबोर्डिंग छोड़ें' : 'Skip onboarding',
                   child: TextButton(
                     onPressed: _completeOnboarding,
                     child: Text(
-                      'Skip',
+                      isHindi ? 'छोड़ें' : 'Skip',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: subtextColor,
                           ),
@@ -109,15 +141,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _slides.length,
+                itemCount: slides.length,
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                 },
                 itemBuilder: (context, index) {
-                  final slide = _slides[index];
+                  final slide = slides[index];
                   return Semantics(
                     label:
-                        'Onboarding step ${index + 1} of ${_slides.length}. ${slide.title}. ${slide.description}',
+                        '${isHindi ? "ऑनबोर्डिंग चरण ${index + 1} / ${slides.length}" : "Onboarding step ${index + 1} of ${slides.length}"}. ${slide.title}. ${slide.description}',
                     child: Padding(
                       padding:
                           const EdgeInsets.symmetric(horizontal: VBSpacing.xl),
@@ -198,7 +230,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // Page dots
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(_slides.length, (index) {
+                    children: List.generate(slides.length, (index) {
                       final isActive = index == _currentPage;
                       return AnimatedContainer(
                         duration: VBDuration.normal,
@@ -224,9 +256,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: ElevatedButton(
                       onPressed: _nextPage,
                       child: Text(
-                        _currentPage == _slides.length - 1
-                            ? 'Get Started'
-                            : 'Next',
+                        _currentPage == slides.length - 1
+                            ? (isHindi ? 'शुरू करें' : 'Get Started')
+                            : (isHindi ? 'अगला' : 'Next'),
                       ),
                     ),
                   ),

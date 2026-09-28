@@ -12,6 +12,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
 
 import 'user_settings_service.dart';
+import '../core/locale/supported_voice_languages.dart';
 
 /// Supported voice commands.
 enum VoiceCommand {
@@ -36,6 +37,10 @@ class TTSSTTService {
   bool get isSpeaking => _isSpeaking;
   bool _isListening = false;
   bool _isInitialized = false;
+
+  /// True while a temporary-language utterance (e.g. OCR auto-detect) is in
+  /// flight, so the engine voice can be restored to the app locale afterwards.
+  bool _tempLangRestore = false;
 
   void Function(bool isSpeaking)? onSpeakingStateChanged;
 
@@ -71,16 +76,19 @@ class TTSSTTService {
     _tts.setCompletionHandler(() {
       _isSpeaking = false;
       onSpeakingStateChanged?.call(false);
+      _restoreAppLocaleVoiceIfTemp();
     });
 
     _tts.setCancelHandler(() {
       _isSpeaking = false;
       onSpeakingStateChanged?.call(false);
+      _restoreAppLocaleVoiceIfTemp();
     });
 
     _tts.setErrorHandler((msg) {
       _isSpeaking = false;
       onSpeakingStateChanged?.call(false);
+      _restoreAppLocaleVoiceIfTemp();
     });
 
     // STT setup
@@ -101,15 +109,8 @@ class TTSSTTService {
   String get currentLocaleCode => _currentLocaleCode;
 
   /// Map app locale code to TTS/STT BCP-47 locale tag.
-  String _ttsLocaleTag(String code) {
-    switch (code) {
-      case 'hi':
-        return 'hi-IN';
-      case 'en':
-      default:
-        return 'en-US';
-    }
-  }
+  /// Delegates to the shared voice-language registry (en, hi, mr, ta, te, bn, kn).
+  String _ttsLocaleTag(String code) => VBLanguages.byCode(code).ttsTag;
 
   /// Switch TTS and STT language at runtime.
   /// Called when user changes language in settings.
@@ -118,29 +119,56 @@ class TTSSTTService {
     await _tts.setLanguage(_ttsLocaleTag(localeCode));
   }
 
-  /// Speak text in a specific language, then restore the current app locale.
-  /// Used by OCR to read Hindi text as Hindi and English text as English,
-  /// independent of the app toggle.
+  /// Restore the engine voice to the app locale after a temporary-language
+  /// utterance finishes. Called from TTS completion/cancel/error handlers —
+  /// NOT synchronously after speak(), because flutter_tts returns immediately
+  /// and switching language mid-synthesis can make Android speak the queued
+  /// utterance with the wrong ("Hindi accent") voice.
+  void _restoreAppLocaleVoiceIfTemp() {
+    if (_tempLangRestore) {
+      _tempLangRestore = false;
+      _tts.setLanguage(_ttsLocaleTag(_currentLocaleCode));
+    }
+  }
+
+  /// Speak text in a specific language, then restore the current app locale
+  /// once the utterance completes.
+  /// Used by OCR to read scanned text in the text's language, independent of
+  /// the app toggle.
   Future<void> speakWithLanguage(String text, String langCode, {bool force = true}) async {
     if (!_isInitialized) await initialize();
 
     if (force) {
+      // Swallow the pending restore flag BEFORE stopping, so the cancel
+      // handler of the interrupted temp utterance does not race with the
+      // language switch below.
+      _tempLangRestore = false;
       await _tts.stop();
     } else if (_isSpeaking) {
       return;
     }
 
+    // Devanagari is shared by Hindi AND Marathi. OCR only reports the script
+    // ('hi' for any Devanagari text), so if the user's voice language is
+    // another Devanagari language, speak with that voice instead.
+    String effectiveCode = langCode;
+    if (langCode == 'hi') {
+      final appLang = VBLanguages.byCode(_currentLocaleCode);
+      if (appLang.scriptFlag == VoiceScript.devanagari && appLang.code != 'hi') {
+        effectiveCode = appLang.code;
+      }
+    }
+
     // Temporarily switch to the detected text language
-    final targetTag = _ttsLocaleTag(langCode);
+    final targetTag = _ttsLocaleTag(effectiveCode);
     await _tts.setLanguage(targetTag);
 
+    _tempLangRestore = true;
     _isSpeaking = true;
     onSpeakingStateChanged?.call(true);
     await _tts.speak(text);
-
-    // Restore to app locale after speech completes
-    // (the completion handler will fire, but we also restore language)
-    await _tts.setLanguage(_ttsLocaleTag(_currentLocaleCode));
+    // Voice is restored to the app locale by the completion/cancel/error
+    // handler once this utterance finishes.
   }
 
   // === TTS ===
@@ -150,10 +178,15 @@ class TTSSTTService {
     if (!_isInitialized) await initialize();
 
     if (force) {
+      _tempLangRestore = false;
       await _tts.stop();
     } else if (_isSpeaking) {
       return;
     }
+
+    // Self-heal: this method always speaks in the APP locale. A previous
+    // OCR utterance may have left the engine on another voice.
+    await _tts.setLanguage(_ttsLocaleTag(_currentLocaleCode));
 
     _isSpeaking = true;
     onSpeakingStateChanged?.call(true);
@@ -213,68 +246,51 @@ class TTSSTTService {
   }
 
   /// Parse a raw transcript into a VoiceCommand.
-  /// Supports both English and Hindi keywords.
+  ///
+  /// Multilingual: keyword sets come from the shared voice-language registry
+  /// (English, Hindi, Marathi, Tamil, Telugu, Bengali, Kannada). Matching is
+  /// substring-based so multi-word phrases ("help me", "உதவி தேவை",
+  /// "क्या दिख रहा") work without tokenization edge cases.
+  ///
+  /// IMPORTANT: emergency is checked FIRST — several languages share words
+  /// between distress and help (e.g. Marathi "मदत करा" contains "मदत"), and
+  /// the distress phrase must win. Plain "मदद"/"help" stays on the help
+  /// command, never SOS.
   VoiceCommand _parseCommand(String transcript) {
-    // Normalize
-    final words = transcript.toLowerCase().split(RegExp(r'\s+'));
+    final text = transcript.toLowerCase().trim();
+    if (text.isEmpty) return VoiceCommand.unknown;
 
-    // Emergency / SOS
-    if (words.contains('emergency') ||
-        words.contains('sos') ||
-        words.contains('help me') ||
-        words.contains('\u0906\u092A\u093E\u0924\u0915\u093E\u0932') || // आपातकाल
-        words.contains('\u092E\u0926\u0926') ||            // मदद
-        words.contains('\u092C\u091A\u093E\u0913') ||      // बचाओ
-        words.contains('\u0916\u0924\u0930\u093E')) {       // खतरा
-      return VoiceCommand.emergency;
+    bool matches(String commandKey) {
+      for (final lang in VBLanguages.all) {
+        final keywords = lang.voiceKeywords[commandKey];
+        if (keywords == null) continue;
+        for (final k in keywords) {
+          final kw = k.toLowerCase();
+          if (kw.runes.every((r) => r >= 0x0000 && r <= 0x007F)) {
+            // Latin keyword: word-boundary match so short words like "no" or
+            // "call" don't fire inside "know", "now", "recall", "yesterday".
+            if (RegExp('(^|[^a-z])${RegExp.escape(kw)}([^a-z]|\$)')
+                .hasMatch(text)) {
+              return true;
+            }
+          } else {
+            // Indic keyword: substring match (Indic words are long and
+            // distinctive; STT may attach suffixes, so boundaries are unsafe).
+            if (text.contains(kw)) return true;
+          }
+        }
+      }
+      return false;
     }
-    if (words.contains('help') ||
-        transcript.contains("what's around") ||
-        transcript.contains('\u0906\u0938\u092A\u093E\u0938') || // आसपास
-        transcript.contains('\u092E\u0926\u0926')) {              // मदद
-      return VoiceCommand.help;
-    }
-    if (words.contains('describe') ||
-        transcript.contains('what do you see') ||
-        transcript.contains('tell me') ||
-        transcript.contains('\u092C\u0924\u093E\u0913') ||     // बताओ
-        transcript.contains('\u0915\u094D\u092F\u093E \u0926\u093F\u0916 \u0930\u0939\u093E')) { // क्या दिख रहा
-      return VoiceCommand.describe;
-    }
-    if (words.contains('stop') ||
-        words.contains('quiet') ||
-        words.contains('silence') ||
-        words.contains('\u0930\u0941\u0915\u094B') ||     // रुको
-        words.contains('\u0936\u093E\u0902\u0924') ||     // शांत
-        words.contains('\u092C\u0902\u0926')) {           // बंद
-      return VoiceCommand.stop;
-    }
-    if (words.contains('call') ||
-        words.contains('volunteer') ||
-        words.contains('\u0915\u0949\u0932') ||            // कॉल
-        words.contains('\u0938\u094D\u0935\u092F\u0902\u0938\u0947\u0935\u0915')) { // स्वयंसेवक
-      return VoiceCommand.call;
-    }
-    if (transcript.contains('end call') ||
-        transcript.contains('hang up') ||
-        transcript.contains('\u0915\u0949\u0932 \u0916\u0924\u094D\u092E') || // कॉल खत्म
-        transcript.contains('\u0930\u0916\u094B')) {                           // रखो
-      return VoiceCommand.endCall;
-    }
-    if (words.contains('yes') ||
-        words.contains('yeah') ||
-        words.contains('confirm') ||
-        words.contains('\u0939\u093E\u0901') ||      // हाँ
-        words.contains('\u0939\u093E\u0902')) {       // हां
-      return VoiceCommand.yes;
-    }
-    if (words.contains('no') ||
-        words.contains('cancel') ||
-        words.contains('nevermind') ||
-        words.contains('\u0928\u0939\u0940\u0902') ||   // नहीं
-        words.contains('\u0928\u093E')) {               // ना
-      return VoiceCommand.no;
-    }
+
+    if (matches('emergency')) return VoiceCommand.emergency;
+    if (matches('help')) return VoiceCommand.help;
+    if (matches('describe')) return VoiceCommand.describe;
+    if (matches('stop')) return VoiceCommand.stop;
+    if (matches('endCall')) return VoiceCommand.endCall;
+    if (matches('call')) return VoiceCommand.call;
+    if (matches('yes')) return VoiceCommand.yes;
+    if (matches('no')) return VoiceCommand.no;
 
     return VoiceCommand.unknown;
   }

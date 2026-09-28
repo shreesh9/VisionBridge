@@ -19,6 +19,7 @@ import '../../../../core/theme/dimensions.dart';
 import '../../../../services/tts_stt_service.dart';
 import '../../../../services/permission_service.dart';
 import '../../../../services/user_settings_service.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../shared/widgets/glass_container.dart';
 
 class ReadTextScreen extends StatefulWidget {
@@ -38,10 +39,6 @@ class _ReadTextScreenState extends State<ReadTextScreen>
   double _currentZoom = 1.0;
   double _baseZoom = 1.0;
 
-  final TextRecognizer _textRecognizerLatin =
-      TextRecognizer(script: TextRecognitionScript.latin);
-  final TextRecognizer _textRecognizerDevanagari =
-      TextRecognizer(script: TextRecognitionScript.devanagiri);
   final TTSSTTService _ttsService = TTSSTTService();
   final PermissionService _permissionService = PermissionService();
 
@@ -135,30 +132,90 @@ class _ReadTextScreenState extends State<ReadTextScreen>
   void dispose() {
     _scanAnimationController.dispose();
     _cameraController?.dispose();
-    _textRecognizerLatin.close();
-    _textRecognizerDevanagari.close();
     _ttsService.dispose();
     super.dispose();
   }
 
-  /// Detect whether a string is predominantly Hindi (Devanagari) or English.
-  /// Returns 'hi' if majority characters are Devanagari, else 'en'.
+  /// Run one ML Kit text recognition pass with a freshly created recognizer
+  /// that is closed immediately after use.
+  ///
+  /// CRITICAL: The google_mlkit_text_recognition plugin crashes natively
+  /// (app killed, no Dart exception) when 2+ TextRecognizers are created or
+  /// used at the same time (flutter-ml issue #519). The old code held Latin
+  /// AND Devanagari recognizers as long-lived fields and ran them in parallel
+  /// via Future.wait — which crashed the app on every scan on many devices.
+  /// Never instantiate two recognizers concurrently.
+  Future<RecognizedText?> _runRecognition(
+    InputImage inputImage,
+    TextRecognitionScript script,
+  ) async {
+    TextRecognizer? recognizer;
+    try {
+      recognizer = TextRecognizer(script: script);
+      return await recognizer.processImage(inputImage);
+    } catch (e) {
+      debugPrint('[ReadText] ${script.name} recognition failed: $e');
+      return null;
+    } finally {
+      try {
+        recognizer?.close();
+      } catch (_) {}
+    }
+  }
+
+  /// Detect whether a string is predominantly Hindi (Devanagari), English
+  /// (Latin) or another Indic script.
+  ///
+  /// Returns the app language code whose SCRIPT matches the text:
+  /// 'hi' for ANY Devanagari text (also read by Marathi users — see
+  /// TTSSTTService.speakWithLanguage), 'en' for Latin, or 'ta'/'te'/'bn'/'kn'
+  /// when the majority of letters belong to that script.
   String _detectTextLanguage(String text) {
-    int devanagariCount = 0;
-    int latinCount = 0;
+    final counts = <String, int>{
+      'en': 0,
+      'hi': 0,
+      'ta': 0,
+      'te': 0,
+      'bn': 0,
+      'kn': 0,
+    };
     for (final rune in text.runes) {
-      // Devanagari Unicode block: U+0900–U+097F
-      if (rune >= 0x0900 && rune <= 0x097F) {
-        devanagariCount++;
-      }
       // Basic Latin letters A-Z, a-z
-      else if ((rune >= 0x0041 && rune <= 0x005A) ||
-               (rune >= 0x0061 && rune <= 0x007A)) {
-        latinCount++;
+      if ((rune >= 0x0041 && rune <= 0x005A) ||
+          (rune >= 0x0061 && rune <= 0x007A)) {
+        counts['en'] = counts['en']! + 1;
+      } else {
+        switch (VBLanguages.scriptOfRune(rune)) {
+          case VoiceScript.latin:
+            break; // non-letter ASCII/punctuation — ignore
+          case VoiceScript.devanagari:
+            counts['hi'] = counts['hi']! + 1;
+          case VoiceScript.bengali:
+            counts['bn'] = counts['bn']! + 1;
+          case VoiceScript.dravidian:
+            // Distinguish Tamil (0x0B80–0x0BFF) vs Telugu (0x0C00–0x0C7F)
+            // vs Kannada (0x0C80–0x0CFF) blocks.
+            if (rune <= 0x0BFF) {
+              counts['ta'] = counts['ta']! + 1;
+            } else if (rune <= 0x0C7F) {
+              counts['te'] = counts['te']! + 1;
+            } else {
+              counts['kn'] = counts['kn']! + 1;
+            }
+        }
       }
     }
-    if (devanagariCount == 0 && latinCount == 0) return 'en';
-    return devanagariCount > latinCount ? 'hi' : 'en';
+
+    String best = 'en';
+    int bestCount = counts['en']!;
+    for (final entry in counts.entries) {
+      if (entry.key == 'en') continue;
+      if (entry.value > bestCount) {
+        best = entry.key;
+        bestCount = entry.value;
+      }
+    }
+    return best;
   }
 
   Future<void> _scanAndReadText() async {
@@ -184,13 +241,13 @@ class _ReadTextScreenState extends State<ReadTextScreen>
       final XFile photo = await _cameraController!.takePicture();
       final inputImage = InputImage.fromFilePath(photo.path);
 
-      // Run BOTH Latin and Devanagari recognizers in parallel
-      final results = await Future.wait([
-        _textRecognizerLatin.processImage(inputImage),
-        _textRecognizerDevanagari.processImage(inputImage),
-      ]);
-      final RecognizedText latinResult = results[0];
-      final RecognizedText devanagariResult = results[1];
+      // Run recognizers SEQUENTIALLY, one at a time (see _runRecognition —
+      // parallel recognizers crash the app natively). Same merged quality as
+      // before: whichever script finds the richer text wins.
+      final RecognizedText? latinResult =
+          await _runRecognition(inputImage, TextRecognitionScript.latin);
+      final RecognizedText? devanagariResult =
+          await _runRecognition(inputImage, TextRecognitionScript.devanagiri);
 
       // Decode exact captured image dimensions to map viewfinder crop bounds
       final bytes = await File(photo.path).readAsBytes();
@@ -201,8 +258,9 @@ class _ReadTextScreenState extends State<ReadTextScreen>
       frameInfo.image.dispose();
 
       // Extract visible lines from both recognizers
-      List<String> extractVisibleLines(RecognizedText recognized) {
+      List<String> extractVisibleLines(RecognizedText? recognized) {
         final List<String> lines = [];
+        if (recognized == null) return lines;
         if (_containerSize.width > 0 &&
             _containerSize.height > 0 &&
             imgW > 0 &&
@@ -249,6 +307,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
       final String devanagariText = devanagariLines.join('\n').trim();
 
       // Pick the best result — prefer the one with more meaningful content
+      // (Latin and Devanagari are the two bundled script passes).
       String text;
       if (devanagariText.isNotEmpty && latinText.isNotEmpty) {
         // Both found text — use the longer one (more characters = more accurate match)
@@ -259,7 +318,13 @@ class _ReadTextScreenState extends State<ReadTextScreen>
         text = latinText;
       }
 
-      // Auto-detect the language of the extracted text
+      // Auto-detect the language of the extracted text.
+      // NOTE: ML Kit (google_mlkit_text_recognition 0.13.x) only ships Latin
+      // and Devanagari (plus CJK) recognizers — there is NO Tamil/Telugu/
+      // Bengali/Kannada on-device recognition. Scans of those scripts return
+      // "No text found"; reading them aloud would need Google Cloud Vision
+      // (server-based). Voice support for those languages is otherwise full
+      // (TTS, AI descriptions, voice commands).
       final String detectedLang = _detectTextLanguage(text);
 
       if (mounted) {

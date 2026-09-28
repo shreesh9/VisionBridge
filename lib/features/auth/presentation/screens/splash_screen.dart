@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/locale_provider.dart';
 import '../../../../services/firestore_service.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
@@ -84,6 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
 
     return Scaffold(
       body: Container(
@@ -124,7 +127,9 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   const SizedBox(height: VBSpacing.sm),
                   Text(
-                    'Your AI-powered visual assistant',
+                    isHindi
+                        ? 'आपका AI-संचालित दृश्य सहायक'
+                        : 'Your AI-powered visual assistant',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: isDark
                               ? VBDarkColors.onSurfaceVariant
