@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/call_orchestration_service.dart';
 import '../../../../services/webrtc_service.dart';
 import '../../../../services/user_settings_service.dart';
@@ -35,6 +36,9 @@ class _VInCallScreenState extends State<VInCallScreen> {
   StreamSubscription<MediaStream>? _remoteStreamSub;
   Timer? _timer;
   String _localeCode = 'en';
+
+  /// UI strings for the current language (from the registry).
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   static const MethodChannel _privacyChannel = MethodChannel('com.visionbridge.app/privacy');
 
@@ -224,10 +228,8 @@ class _VInCallScreenState extends State<VInCallScreen> {
                           const SizedBox(width: VBSpacing.sm),
                           Text(
                             _isConnected
-                                ? (_localeCode == 'hi'
-                                    ? 'सहायता में · ${_formatDuration(_callDurationSeconds)}'
-                                    : 'Assisting · ${_formatDuration(_callDurationSeconds)}')
-                                : (_localeCode == 'hi' ? 'लाइव वीडियो कनेक्ट हो रहा है...' : 'Connecting live video...'),
+                                ? _lang.uiX(UIKey.assistingWith, _formatDuration(_callDurationSeconds))
+                                : _lang.ui(UIKey.connectingVideo),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w500,
@@ -265,9 +267,7 @@ class _VInCallScreenState extends State<VInCallScreen> {
                     SizedBox(width: VBSpacing.sm),
                     Expanded(
                       child: Text(
-                        _localeCode == 'hi'
-                            ? 'आप जो देख रहे हैं उसे स्पष्ट बताएं — उपयोगकर्ता आपको सुन सकता है।'
-                            : 'Describe what you see clearly — the user can hear you.',
+                        _lang.ui(UIKey.describeClearlyHint),
                         style: TextStyle(color: Colors.white, fontSize: 13),
                       ),
                     ),
@@ -293,7 +293,7 @@ class _VInCallScreenState extends State<VInCallScreen> {
                       icon: _isMuted
                           ? Icons.mic_off_rounded
                           : Icons.mic_rounded,
-                      label: _isMuted ? (_localeCode == 'hi' ? 'अनम्यूट' : 'Unmute') : (_localeCode == 'hi' ? 'म्यूट' : 'Mute'),
+                      label: _isMuted ? _lang.ui(UIKey.unmute) : _lang.ui(UIKey.mute),
                       isActive: !_isMuted,
                       onTap: _toggleMute,
                     ),
@@ -325,7 +325,7 @@ class _VInCallScreenState extends State<VInCallScreen> {
                       icon: _isSpeakerOn
                           ? Icons.volume_up_rounded
                           : Icons.volume_down_rounded,
-                      label: _isSpeakerOn ? (_localeCode == 'hi' ? 'स्पीकर' : 'Speaker') : (_localeCode == 'hi' ? 'ईयरपीस' : 'Earpiece'),
+                      label: _isSpeakerOn ? _lang.ui(UIKey.speaker) : _lang.ui(UIKey.earpiece),
                       isActive: _isSpeakerOn,
                       onTap: _toggleSpeaker,
                     ),

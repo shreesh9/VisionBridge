@@ -228,7 +228,6 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
     final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
     final successColor = isDark ? VBDarkColors.success : VBLightColors.success;
     final sosColor = isDark ? VBDarkColors.sos : VBLightColors.sos;
-    final bool isHindi = _localeCode == 'hi';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -277,8 +276,8 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                     const SizedBox(height: VBSpacing.xl),
                     Text(
                       _isClaimedByOther
-                          ? (isHindi ? 'कॉल उठा ली गई' : 'Call Answered')
-                          : (isHindi ? 'किसी को आपकी\nमदद चाहिए' : 'Someone needs\nyour help'),
+                          ? _lang.ui(UIKey.callAnswered)
+                          : _lang.ui(UIKey.someoneNeedsHelp),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
@@ -290,10 +289,10 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                     const SizedBox(height: VBSpacing.md),
                     Text(
                       _isClaimedByOther
-                          ? (isHindi ? 'यह अनुरोध किसी अन्य स्वयंसेवक ने उठा लिया।' : 'This request was picked up by another volunteer.')
+                          ? _lang.ui(UIKey.pickedUpByOther)
                           : (_isConnecting
-                              ? (isHindi ? 'लाइव कॉल कनेक्ट हो रही है...' : 'Connecting live call...')
-                              : (isHindi ? 'एक दृष्टिबाधित उपयोगकर्ता लाइव\nविज़ुअल सहायता का अनुरोध कर रहा है' : 'A visually impaired user is requesting\nlive visual assistance')),
+                              ? _lang.ui(UIKey.connectingLiveCall)
+                              : _lang.ui(UIKey.requestingLiveAssistance)),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
@@ -337,7 +336,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                             ),
                             const SizedBox(height: VBSpacing.sm),
                             Text(
-                              isHindi ? 'अस्वीकार करें' : 'Decline',
+                              _lang.ui(UIKey.decline),
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.7),
                                 fontSize: 14,
@@ -389,7 +388,7 @@ class _VIncomingCallScreenState extends State<VIncomingCallScreen>
                             ),
                             const SizedBox(height: VBSpacing.sm),
                             Text(
-                              isHindi ? 'स्वीकार करें' : 'Accept',
+                              _lang.ui(UIKey.accept),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,

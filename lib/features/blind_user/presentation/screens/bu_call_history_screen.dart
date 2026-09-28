@@ -8,6 +8,7 @@ import '../../../../core/theme/dimensions.dart';
 import '../../../../shared/widgets/sos_button.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/user_settings_service.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 
 class BUCallHistoryScreen extends StatefulWidget {
@@ -22,6 +23,9 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
   List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
   String _localeCode = 'en';
+
+  /// UI/narration strings for the current language (from the registry).
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   @override
   void initState() {
@@ -55,13 +59,13 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
   }
 
   String _formatTimeAgo(dynamic createdAt) {
-    if (createdAt == null) return _localeCode == 'hi' ? 'अभी' : 'Just now';
+    if (createdAt == null) return _lang.ui(UIKey.justNow);
     final dt = createdAt is DateTime ? createdAt : createdAt.toDate();
     final diff = DateTime.now().difference(dt as DateTime);
-    if (diff.inDays > 0) return _localeCode == 'hi' ? '${diff.inDays} दिन पहले' : '${diff.inDays}d ago';
-    if (diff.inHours > 0) return _localeCode == 'hi' ? '${diff.inHours} घंटे पहले' : '${diff.inHours}h ago';
-    if (diff.inMinutes > 0) return _localeCode == 'hi' ? '${diff.inMinutes} मिनट पहले' : '${diff.inMinutes}m ago';
-    return _localeCode == 'hi' ? 'अभी' : 'Just now';
+    if (diff.inDays > 0) return _lang.uiX(UIKey.daysAgo, '${diff.inDays}');
+    if (diff.inHours > 0) return _lang.uiX(UIKey.hoursAgo, '${diff.inHours}');
+    if (diff.inMinutes > 0) return _lang.uiX(UIKey.minutesAgo, '${diff.inMinutes}');
+    return _lang.ui(UIKey.justNow);
   }
 
   String _formatDuration(dynamic secs) {
@@ -82,16 +86,13 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
     final subtextColor =
         isDark ? VBDarkColors.onSurfaceVariant : VBLightColors.onSurfaceVariant;
     final surfaceColor = isDark ? VBDarkColors.surface : VBLightColors.surface;
-    final outlineColor = isDark ? VBDarkColors.outline : VBLightColors.outline;
-    final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
-
-    final bool isHindi = _localeCode == 'hi';
+    final outlineColor = isDark ? VBDarkColors.outline : VBLightColors.outline;    final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
 
     return Scaffold(
       backgroundColor: bgColor,
       floatingActionButton: const SOSButton(),
       appBar: AppBar(
-        title: Text(isHindi ? 'कॉल इतिहास' : 'Call History'),
+        title: Text(_lang.ui(UIKey.callHistory)),
         backgroundColor: bgColor,
       ),
       body: _isLoading
@@ -103,13 +104,13 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
                     children: [
                       Icon(Icons.history_rounded, size: 64, color: subtextColor),
                       const SizedBox(height: VBSpacing.md),
-                      Text(isHindi ? 'अभी तक कोई कॉल नहीं' : 'No calls yet',
+                      Text(_lang.ui(UIKey.noCallsYet),
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
                               ?.copyWith(color: subtextColor)),
                       const SizedBox(height: VBSpacing.sm),
-                      Text(isHindi ? 'आपका कॉल इतिहास यहाँ दिखेगा' : 'Your call history will appear here',
+                      Text(_lang.ui(UIKey.historyWillAppearHere),
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -124,8 +125,8 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
                       const SizedBox(height: VBSpacing.sm),
                   itemBuilder: (context, index) {
                     final record = _history[index];
-                    final volunteerName = record['volunteerName'] as String? ?? (isHindi ? 'समुदाय स्वयंसेवक' : 'Community Volunteer');
-                    final title = isHindi ? '$volunteerName द्वारा सहायता' : 'Assisted by $volunteerName';
+                    final volunteerName = record['volunteerName'] as String? ?? _lang.ui(UIKey.communityVolunteer);
+                    final title = _lang.uiX(UIKey.assistedBy, volunteerName);
                     final timeAgo = _formatTimeAgo(record['createdAt']);
                     final durationStr = _formatDuration(record['durationSeconds']);
 
@@ -171,9 +172,7 @@ class _BUCallHistoryScreenState extends State<BUCallHistoryScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    isHindi
-                                        ? '$timeAgo · अवधि: $durationStr'
-                                        : '$timeAgo · Duration: $durationStr',
+                                    _lang.uiX(UIKey.durationLabel, durationStr),
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall

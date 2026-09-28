@@ -15,6 +15,7 @@ import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/constants.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/fcm_service.dart';
 
@@ -177,6 +178,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
     if (localeCode != _localeCode) {
       _localeCode = localeCode;
     }
+    final lang = VBLanguages.byCode(_localeCode);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
@@ -188,7 +190,6 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
     final successColor = isDark ? VBDarkColors.success : VBLightColors.success;
     final surfaceColor = isDark ? VBDarkColors.surface : VBLightColors.surface;
     final outlineColor = isDark ? VBDarkColors.outline : VBLightColors.outline;
-    final bool isHindi = _localeCode == 'hi';
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -209,14 +210,14 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isHindi ? 'स्वयंसेवक' : 'Volunteer',
+                          lang.ui(UIKey.volunteer),
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                 color: subtextColor,
                               ),
                         ),
                         const SizedBox(height: VBSpacing.xs),
                         Text(
-                          FirebaseAuth.instance.currentUser?.displayName ?? (isHindi ? 'डैशबोर्ड' : 'Dashboard'),
+                          FirebaseAuth.instance.currentUser?.displayName ?? lang.ui(UIKey.dashboard),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style:
@@ -241,9 +242,9 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
               // === Online/Offline Toggle ===
               Semantics(
                 toggled: _isOnline,
-                label: isHindi
-                    ? 'उपलब्धता टॉगल। वर्तमान में ${_isOnline ? "ऑनलाइन" : "ऑफ़लाइन"}. ${_isOnline ? "ऑफ़लाइन" : "ऑनलाइन"} होने के लिए टैप करें।'
-                    : 'Availability toggle. Currently ${_isOnline ? "online" : "offline"}. Tap to ${_isOnline ? "go offline" : "go online"}.',
+                label: _isOnline
+                    ? lang.ui(UIKey.availabilityToggleOnline)
+                    : lang.ui(UIKey.availabilityToggleOffline),
                 child: GestureDetector(
                   onTap: _toggleOnline,
                   child: AnimatedContainer(
@@ -301,8 +302,8 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                             children: [
                               Text(
                                 _isOnline
-                                    ? (isHindi ? 'आप ऑनलाइन हैं' : 'You\'re Online')
-                                    : (isHindi ? 'आप ऑफलाइन हैं' : 'You\'re Offline'),
+                                    ? lang.ui(UIKey.youreOnline)
+                                    : lang.ui(UIKey.youreOffline),
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge
@@ -315,8 +316,8 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 _isOnline
-                                    ? (isHindi ? 'मदद अनुरोध प्राप्त करने के लिए तैयार' : 'Ready to receive help requests')
-                                    : (isHindi ? 'स्वयंसेवा शुरू करने के लिए टैप करें' : 'Tap to start volunteering'),
+                                    ? lang.ui(UIKey.readyToReceive)
+                                    : lang.ui(UIKey.tapToStartVolunteering),
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
@@ -375,7 +376,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                     child: _StatCard(
                       icon: Icons.call_rounded,
                       value: '$_totalCallsHelped',
-                      label: isHindi ? 'कॉल सहायता' : 'Calls Helped',
+                      label: lang.ui(UIKey.callsHelped),
                       color: primaryColor,
                       surfaceColor: surfaceColor,
                       outlineColor: outlineColor,
@@ -389,7 +390,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                     child: _StatCard(
                       icon: Icons.timer_outlined,
                       value: '${_totalMinutesHelped}m',
-                      label: isHindi ? 'समय दिया' : 'Time Given',
+                      label: lang.ui(UIKey.timeGiven),
                       color: secondaryColor,
                       surfaceColor: surfaceColor,
                       outlineColor: outlineColor,
@@ -404,7 +405,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
 
               // === Recent Activity ===
               Text(
-                isHindi ? 'हाल की गतिविधि' : 'Recent Activity',
+                lang.ui(UIKey.recentActivity),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: textColor,
                       fontWeight: FontWeight.w600,
@@ -424,7 +425,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                                     color: subtextColor),
                                 const SizedBox(height: VBSpacing.sm),
                                 Text(
-                                  isHindi ? 'अभी तक कोई कॉल नहीं' : 'No calls yet',
+                                  lang.ui(UIKey.noCallsYet),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyLarge
@@ -432,7 +433,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                                 ),
                                 const SizedBox(height: VBSpacing.xs),
                                 Text(
-                                  isHindi ? 'मदद शुरू करने के लिए ऑनलाइन जाएं!' : 'Go online to start helping!',
+                                  lang.ui(UIKey.goOnlineToStartHelpingExcl),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall
@@ -451,21 +452,21 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                               final call = _recentActivity[index];
                               final blindUserName =
                                   call['blindUserName'] as String? ??
-                                      (isHindi ? 'दृष्टिबाधित उपयोगकर्ता' : 'Visually Impaired User');
-                              final title = isHindi ? '$blindUserName की मदद की' : 'Helped $blindUserName';
+                                      lang.ui(UIKey.visuallyImpairedUser);
+                              final title = lang.uiX(UIKey.helpedUser, blindUserName);
                               final createdAt = call['createdAt'] as dynamic;
-                              String timeAgo = isHindi ? 'अभी' : 'Just now';
+                              String timeAgo = lang.ui(UIKey.justNow);
                               if (createdAt != null) {
                                 final dt = createdAt is DateTime
                                     ? createdAt
                                     : (createdAt).toDate();
                                 final diff = DateTime.now().difference(dt);
                                 if (diff.inDays > 0) {
-                                  timeAgo = isHindi ? '${diff.inDays} दिन पहले' : '${diff.inDays}d ago';
+                                  timeAgo = lang.uiX(UIKey.daysAgo, '${diff.inDays}');
                                 } else if (diff.inHours > 0) {
-                                  timeAgo = isHindi ? '${diff.inHours} घंटे पहले' : '${diff.inHours}h ago';
+                                  timeAgo = lang.uiX(UIKey.hoursAgo, '${diff.inHours}');
                                 } else if (diff.inMinutes > 0) {
-                                  timeAgo = isHindi ? '${diff.inMinutes} मिनट पहले' : '${diff.inMinutes}m ago';
+                                  timeAgo = lang.uiX(UIKey.minutesAgo, '${diff.inMinutes}');
                                 }
                               }
 
@@ -508,7 +509,7 @@ class _VHomeScreenState extends ConsumerState<VHomeScreen> {
                           child: OutlinedButton.icon(
                             onPressed: () => context.push(AppRoutes.vCallHistory),
                             icon: const Icon(Icons.history_rounded),
-                            label: Text(isHindi ? 'पूरा इतिहास' : 'Full History'),
+                            label: Text(lang.ui(UIKey.fullHistory)),
                           ),
                         ),
                       ],

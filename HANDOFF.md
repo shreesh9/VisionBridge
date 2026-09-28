@@ -6,7 +6,7 @@
 - **Project Name:** VisionBridge (Flutter app — AI assistive app for visually impaired users)
 - **Current Version:** v9.0.5
 - **Task at Hand:** Complete Hindi & English bilingual support (TTS, OCR reading, UI switching)
-- **Code State:** ✅ All bilingual code changes DONE + 3 follow-up fixes DONE (OCR crash, Groq model swap, persona wiring) + OCR root-cause fix round 2 (bundled Devanagari ML Kit model in gradle) + **VOICE-LAYER MULTI-LANGUAGE EXPANSION DONE** (7 languages: en, hi, mr, ta, te, bn, kn) + **NARRATION ACCENT BUG FIXED (owner-reported)** — see Fix 7. `flutter analyze` passes with **0 errors** (18 pre-existing lint infos/warnings remain — see "Known Issues"). **⚠️ The gradle change requires a FULL rebuild (`flutter clean` then `flutter run`) — hot reload/restart will NOT pick it up. Device verification still pending.**
+- **Code State:** ✅ All bilingual code changes DONE + 3 follow-up fixes DONE (OCR crash, Groq model swap, persona wiring) + OCR root-cause fix round 2 (bundled Devanagari ML Kit model in gradle) + **VOICE-LAYER MULTI-LANGUAGE EXPANSION DONE** (7 languages: en, hi, mr, ta, te, bn, kn) + **NARRATION ACCENT BUG FIXED** (Fix 7) + **FULL UI TRANSLATION FOR ALL 7 LANGUAGES DONE** (Fix 8 — owner requested "op" mode; every screen now renders in the selected language). `flutter analyze` passes with **0 errors** (18 pre-existing lint infos/warnings remain — see "Known Issues"). **⚠️ The gradle change requires a FULL rebuild (`flutter clean` then `flutter run`) — hot reload/restart will NOT pick it up. Device verification still pending.**
 - **Security:** No hardcoded API keys. Keys load via `--dart-define` or `assets/.env` (`GROQ_KEY_1..3`, `OPENROUTER_API_KEY`).
 
 ---
@@ -97,6 +97,14 @@ User-reported: (a) OCR "Read Text Out Loud" button crashed the app every time, (
 - **`main.dart` hardening:** Material `locale` is clamped to en/hi (`supportedLocales` only has EN/Hindi ARBs). Voice-only codes (mr/ta/te/bn/kn) map to Hindi UI; previously an unsupported Material locale could cause unexpected fallbacks.
 - **Deliberate scope:** visible button/label TEXT in mr/ta/te/bn/kn still shows the English string (UI is EN/Hindi by design from Fix 5). What changed is that everything SPOKEN is now genuinely in the selected language. If owner later wants full UI text, that's the ARB migration.
 
+### Fix 8 — FULL UI translation for all 7 languages (owner: "that would actually be op... if not lets add it")
+- **Owner question first (answered):** is full UI text for 5 new languages heavy for the app? NO — strings are const-map lookups (constant time), APK grows ~100 KB, Android system fonts render all Indic scripts natively, zero impact on camera/WebRTC/ML Kit. The only real cost was translation content, now written.
+- **Owner's build warnings question (answered):** the `source/target value 8 is obsolete` + `uses deprecated/unchecked API` warnings come from Google's ML Kit plugin Java code (their build.gradle targets Java 8, their classes use old APIs). Not our code, zero runtime impact, seen by every Flutter app using ML Kit — safe to ignore.
+- **What changed in the registry:** added `UIKey` enum (~110 keys) + per-language `uiStrings` maps for ALL 7 languages (full translations of every screen string) + `ui(key)` / `uiX(key, x)` helpers. `voice()` narration system from Fix 7 unchanged and coexists.
+- **Every screen converted to the registry (no more `isHindi ? ... : ...` ternaries in any screen):** splash, login, role selection, onboarding (all 7 slide sets incl. 5 new translations), BU home, V home, BU/V call history, BU/V in-call, incoming call, SOS, AI assist status texts, read-text, BU/V settings (section headers, tiles, persona tile now takes translated title/desc params). Language picker titles also registry-driven.
+- **`main.dart`:** Material `locale` is now the raw stored locale again — safe because every voice language has full UI strings; `supportedLocales` still only declares en/hi ARBs, so MaterialApp locale-resolution falls back per Flutter's algorithm (English ARB is the template; non-listed locales resolve to the closest). No visible regressions expected; if a screen ever shows English under mr/ta/te/bn/kn, check that MaterialApp locale resolution, NOT the registry.
+- **Verification note for next AI:** the registry now has ~110 UI keys × 7 languages + ~35 voice keys × 7 languages. If any key is ever missing in one language, `ui()`/`voice()` throws — `flutter analyze` catches missing keys only in const contexts, so run the app through ALL screens once per language (or write a simple test iterating `VBLanguages.all` asserting every map contains every key — recommended, ~20 lines).
+
 ---
 
 ## 🐞 Errors / Bugs Currently Happening
@@ -115,7 +123,7 @@ User-reported: (a) OCR "Read Text Out Loud" button crashed the app every time, (
 - `bu_settings_screen.dart` + `v_settings_screen.dart`: 5× `use_build_context_synchronously` infos.
 
 **Architectural debt (not bugs):**
-- `lib/l10n/app_en.arb` + `app_hi.arb` + `l10n.yaml` are **dead code**: only `main.dart` wires `AppLocalizations`; every screen uses inline `isHindi ? ... : ...` ternaries. Either migrate to ARB or delete the l10n setup.
+- `lib/l10n/app_en.arb` + `app_hi.arb` + `l10n.yaml` are **dead code**: only `main.dart` wires `AppLocalizations`; all strings now live in `supported_voice_languages.dart` (Fix 8). Either delete the l10n setup or leave as-is.
 - `groq_client.dart` + `ai_bridge_service.dart` are unused legacy duplicates of `vision_ai_service.dart` (zero screen references). Safe deletion candidates — confirm with owner first.
 
 ---
@@ -123,7 +131,7 @@ User-reported: (a) OCR "Read Text Out Loud" button crashed the app every time, (
 ## 🎯 Next Steps for the Incoming AI (pick up exactly here)
 
 0. **Verify Fix 4 with a FULL rebuild (do this first):** `flutter clean` → `flutter run` (gradle changes are invisible to hot reload!). Then OCR: press **Read Text Out Loud** repeatedly, scan English text AND a Hindi sign — app must not close, speech must match the scanned language. If it STILL crashes after a clean rebuild, capture `adb logcat` and investigate native logs (suspects: device-specific ML Kit issue, minify/R8 in release builds).
-1. **Verify Fix 6 + Fix 7 (multi-language) on device:** Settings → Language / भाषा → picker opens with 7 languages. Pick each of mr/ta/te/bn/kn: (a) the language-changed confirmation speaks in THAT language, (b) ALL narration (camera ready, analyzing, scanning text, SOS prompts, connecting volunteer) is in the selected language — NO English-with-accent anywhere (this was the Fix 7 bug), (c) Describe Scene speaks pure <language>, (d) voice commands per language (Marathi "मदत करा" → SOS, "मदत" → help), (e) on-screen button/label text stays English (expected — UI is EN/Hindi), (f) OCR: Devanagari sign with mr selected → Marathi voice; English page with mr selected → English voice with no prefix; Tamil sign → "No text found" (known limitation). Requires the device to have that Google TTS voice installed (Settings → Text-to-speech).
+1. **Verify Fix 6+7+8 (multi-language, FULL UI) on device:** Settings → Language / भाषा → picker opens with 7 languages. Pick each of mr/ta/te/bn/kn: (a) the ENTIRE UI renders in that language (home, settings, call screens, histories — Fix 8), (b) ALL narration is in the selected language — NO English-with-accent anywhere (Fix 7), (c) the language-changed confirmation speaks in THAT language, (d) Describe Scene speaks pure <language>, (e) voice commands per language (Marathi "मदत करा" → SOS, "मदत" → help), (f) OCR: Devanagari sign with mr selected → Marathi voice; English page with mr selected → English voice with no prefix; Tamil sign → "No text found" (known limitation). Requires the device to have that Google TTS voice installed (Settings → Text-to-speech).
 2. **Verify Fix 2 & 3 on device:** Describe must return a real description via `qwen/qwen3.8-27b` (not "AI models are busy") — if it fails, log the Groq response body (error string includes status + body; could be key quota, not model). Persona: switch Gen Z ↔ Adult in Settings, run Describe in EN and हि, tone should shift.
 2. **Then — on-device bilingual verification (from previous part of session):**
    - `flutter run` on device, sign in, go to Settings → Language → switch to हि.

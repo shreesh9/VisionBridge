@@ -18,6 +18,7 @@ import '../../../../shared/widgets/sos_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 
 class BUHomeScreen extends ConsumerStatefulWidget {
   const BUHomeScreen({super.key});
@@ -30,8 +31,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final currentLocale = ref.watch(localeProvider);
-    final localeCode = currentLocale.languageCode;
-    final isHindi = localeCode == 'hi';
+    final lang = VBLanguages.byCode(currentLocale.languageCode);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF0F1016) : const Color(0xFFF4F5FB);
@@ -48,7 +48,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
         isDark ? const Color(0xFF00CEC9) : const Color(0xFF00B894);
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    final displayName = currentUser?.displayName ?? (isHindi ? 'उपयोगकर्ता' : 'User');
+    final displayName = currentUser?.displayName ?? lang.ui(UIKey.user);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -70,7 +70,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isHindi ? 'नमस्ते,' : 'Hello,',
+                          lang.ui(UIKey.hello),
                           style: Theme.of(context)
                               .textTheme
                               .bodyLarge
@@ -95,7 +95,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                   const SizedBox(width: VBSpacing.md),
                   Semantics(
                     button: true,
-                    label: isHindi ? 'सेटिंग्स खोलें' : 'Open settings',
+                    label: lang.ui(UIKey.openSettingsSemantics),
                     child: Container(
                       decoration: BoxDecoration(
                         color: cardBgColor,
@@ -121,9 +121,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                 flex: 3,
                 child: Semantics(
                   button: true,
-                  label: isHindi
-                      ? 'AI दृश्य सहायता। अपने आस-पास का दृश्य AI द्वारा जानने के लिए टैप करें।'
-                      : 'AI Visual Assist. Tap to open camera and get AI-powered scene description.',
+                  label: lang.ui(UIKey.aiAssistSemantics),
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.mediumImpact();
@@ -177,7 +175,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                           ),
                           const SizedBox(height: VBSpacing.lg),
                           Text(
-                            isHindi ? 'AI दृश्य सहायता' : 'AI Visual Assist',
+                            lang.ui(UIKey.aiVisualAssist),
                             style: TextStyle(
                               color: textColor,
                               fontSize: 26,
@@ -187,7 +185,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                           ),
                           const SizedBox(height: VBSpacing.xs),
                           Text(
-                            isHindi ? 'अपने आस-पास देखने के लिए टैप करें' : 'Tap to see what\'s around you',
+                            lang.ui(UIKey.tapToSeeAround),
                             style: TextStyle(
                               color: subtextColor,
                               fontSize: 16,
@@ -210,7 +208,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                     Expanded(
                       child: _LiquifyActionCard(
                         icon: Icons.history_rounded,
-                        label: isHindi ? 'इतिहास' : 'History',
+                        label: lang.ui(UIKey.history),
                         accentColor: secondaryColor,
                         bgColor: cardBgColor,
                         borderColor: cardBorderColor,
@@ -226,7 +224,7 @@ class _BUHomeScreenState extends ConsumerState<BUHomeScreen> {
                     Expanded(
                       child: _LiquifyActionCard(
                         icon: Icons.document_scanner_rounded,
-                        label: isHindi ? 'टेक्स्ट पढ़ें' : 'Read Text',
+                        label: lang.ui(UIKey.readText),
                         accentColor: primaryColor,
                         bgColor: cardBgColor,
                         borderColor: cardBorderColor,

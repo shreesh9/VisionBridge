@@ -65,6 +65,7 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
   /// for TTS and voice commands.
   void _showLanguagePicker(BuildContext context, Color primaryColor) {
     final currentCode = ref.read(localeProvider).languageCode;
+    final lang = VBLanguages.byCode(currentCode);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -77,7 +78,7 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
             Padding(
               padding: const EdgeInsets.all(VBSpacing.md),
               child: Text(
-                'Choose Voice Language / आवाज़ की भाषा चुनें',
+                lang.ui(UIKey.chooseVoiceLanguage),
                 style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
@@ -121,7 +122,7 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final nameController = TextEditingController(text: user?.displayName ?? '');
     String photoData = _profilePhotoUrl ?? user?.photoURL ?? '';
-    final isHindi = ref.read(localeProvider).languageCode == 'hi';
+    final lang = VBLanguages.byCode(ref.read(localeProvider).languageCode);
 
     showDialog(
       context: context,
@@ -154,7 +155,7 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
             return AlertDialog(
               backgroundColor: surfaceColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VBRadius.md)),
-              title: Text(isHindi ? 'प्रोफ़ाइल और फोटो संपादित करें' : 'Edit Profile & Photo', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+              title: Text(lang.ui(UIKey.editProfile), style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -188,18 +189,18 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
                       child: TextButton.icon(
                         onPressed: pickPhoto,
                         icon: const Icon(Icons.photo_library_rounded, size: 18),
-                        label: Text(isHindi ? 'डिवाइस से फोटो अपलोड करें' : 'Upload Photo from Device'),
+                        label: Text(lang.ui(UIKey.uploadPhoto)),
                       ),
                     ),
                     const SizedBox(height: VBSpacing.md),
-                    Text(isHindi ? 'प्रदर्शन नाम' : 'Display Name', style: TextStyle(color: subtextColor, fontSize: 12)),
+                    Text(lang.ui(UIKey.displayName), style: TextStyle(color: subtextColor, fontSize: 12)),
                     const SizedBox(height: 4),
                     TextField(
                       controller: nameController,
                       style: TextStyle(color: textColor),
                       onChanged: (_) => setStateDialog(() {}),
                       decoration: InputDecoration(
-                        hintText: isHindi ? 'प्रदर्शन नाम दर्ज करें' : 'Enter display name',
+                        hintText: lang.ui(UIKey.enterDisplayName),
                         hintStyle: TextStyle(color: subtextColor.withOpacity(0.5)),
                         border: const OutlineInputBorder(),
                       ),
@@ -210,7 +211,7 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(isHindi ? 'रद्द करें' : 'Cancel', style: TextStyle(color: subtextColor)),
+                  child: Text(lang.ui(UIKey.cancel), style: TextStyle(color: subtextColor)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
@@ -236,11 +237,11 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
                       });
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(isHindi ? 'प्रोफ़ाइल फोटो सफलतापूर्वक अपडेट हो गई!' : 'Profile photo updated successfully!')),
+                        SnackBar(content: Text(lang.ui(UIKey.photoUpdated))),
                       );
                     }
                   },
-                  child: Text(isHindi ? 'सेव करें' : 'Save'),
+                  child: Text(lang.ui(UIKey.save)),
                 ),
               ],
             );
@@ -262,12 +263,12 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
     final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
     final themeMode = ref.watch(themeModeProvider);
     final currentLocale = ref.watch(localeProvider);
-    final isHindi = currentLocale.languageCode == 'hi';
+    final lang = VBLanguages.byCode(currentLocale.languageCode);
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text(isHindi ? 'सेटिंग्स' : 'Settings'),
+        title: Text(lang.ui(UIKey.settings)),
         backgroundColor: bgColor,
       ),
       body: ListView(
@@ -276,17 +277,15 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           const SizedBox(height: VBSpacing.md),
 
           // Profile
-          _SectionLabel(title: isHindi ? 'प्रोफ़ाइल' : 'Profile', textColor: textColor),
+          _SectionLabel(title: lang.ui(UIKey.profile), textColor: textColor),
           _Tile(
             iconWidget: UserAvatar(
               photoUrl: _profilePhotoUrl ?? FirebaseAuth.instance.currentUser?.photoURL,
               displayName: FirebaseAuth.instance.currentUser?.displayName,
               radius: 18,
             ),
-            title: FirebaseAuth.instance.currentUser?.displayName ?? (isHindi ? 'स्वयंसेवक' : 'Volunteer'),
-            subtitle: isHindi
-                ? 'प्रोफ़ाइल और अवतार संपादित करें • ${FirebaseAuth.instance.currentUser?.email ?? ''}'
-                : 'Tap to edit profile & avatar • ${FirebaseAuth.instance.currentUser?.email ?? ''}',
+            title: FirebaseAuth.instance.currentUser?.displayName ?? lang.ui(UIKey.volunteer),
+            subtitle: '${lang.ui(UIKey.editProfilePhoto)} • ${FirebaseAuth.instance.currentUser?.email ?? ''}',
             onTap: () => _showEditProfileDialog(context, surfaceColor, textColor, subtextColor, primaryColor),
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
@@ -296,10 +295,10 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // Appearance
-          _SectionLabel(title: isHindi ? 'दिखावट' : 'Appearance', textColor: textColor),
+          _SectionLabel(title: lang.ui(UIKey.appearance), textColor: textColor),
           _Tile(
             icon: Icons.palette_outlined,
-            title: isHindi ? 'थीम' : 'Theme',
+            title: lang.ui(UIKey.theme),
             trailing: SegmentedButton<ThemeMode>(
               segments: const [
                 ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_rounded, size: 18)),
@@ -333,10 +332,8 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           // Language Picker (voice layer: EN, HI, MR, TA, TE, BN, KN)
           _Tile(
             icon: Icons.language_rounded,
-            title: 'Language / भाषा',
-            subtitle: isHindi
-                ? 'आवाज़ और आवाज़ आदेश की भाषा'
-                : 'Voice & voice commands',
+            title: lang.ui(UIKey.language),
+            subtitle: lang.ui(UIKey.voiceSubtitleV),
             trailing: Text(
               VBLanguages.byCode(currentLocale.languageCode).nativeName,
               style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
@@ -350,13 +347,13 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // Notifications
-          _SectionLabel(title: isHindi ? 'सूचनाएं' : 'Notifications', textColor: textColor),
+          _SectionLabel(title: lang.ui(UIKey.notifications), textColor: textColor),
           _Tile(
             icon: Icons.notifications_outlined,
-            title: isHindi ? 'पुश नोटिफिकेशन' : 'Push Notifications',
+            title: lang.ui(UIKey.pushNotifications),
             subtitle: _notificationsEnabled
-                ? (isHindi ? 'ऑनलाइन होने पर मदद अनुरोध प्राप्त हो रहे हैं' : 'Receiving help requests when online')
-                : (isHindi ? 'सूचनाएं अक्षम' : 'Notifications disabled'),
+                ? lang.ui(UIKey.receivingRequests)
+                : lang.ui(UIKey.notificationsDisabled),
             trailing: Switch.adaptive(
               value: _notificationsEnabled,
               onChanged: (val) async {
@@ -373,8 +370,8 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           const SizedBox(height: VBSpacing.sm),
           _Tile(
             icon: Icons.vibration_rounded,
-            title: isHindi ? 'ध्वनि और कंपन' : 'Sound & Vibration',
-            subtitle: isHindi ? 'आने वाली कॉल अलर्ट के लिए' : 'For incoming call alerts',
+            title: lang.ui(UIKey.soundAndVibration),
+            subtitle: lang.ui(UIKey.forIncomingCallAlerts),
             trailing: Switch.adaptive(
               value: true,
               onChanged: (v) => HapticFeedback.selectionClick(),
@@ -387,10 +384,10 @@ class _VSettingsScreenState extends ConsumerState<VSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // Account
-          _SectionLabel(title: isHindi ? 'खाता' : 'Account', textColor: textColor),
+          _SectionLabel(title: lang.ui(UIKey.account), textColor: textColor),
           _Tile(
             icon: Icons.logout_rounded,
-            title: isHindi ? 'साइन आउट' : 'Sign Out',
+            title: lang.ui(UIKey.signOut),
             titleColor: isDark ? VBDarkColors.error : VBLightColors.error,
             onTap: () async {
               HapticFeedback.mediumImpact();

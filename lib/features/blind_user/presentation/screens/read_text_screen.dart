@@ -120,13 +120,9 @@ class _ReadTextScreenState extends State<ReadTextScreen>
     } catch (_) {}
     await _ttsService.initialize();
     await _ttsService.setLocale(_localeCode);
-    if (_localeCode != 'en') {
-      // Placeholder hint shown in the result card, in the current language.
-      // (On-screen UI stays EN/Hindi; this is a speech-consistency hint.)
-      _extractedText = _lang == VBLanguages.hi
-          ? 'कैमरा किसी टेक्स्ट, साइन या दस्तावेज़ की ओर रखें और पढ़ें बटन दबाएँ।'
-          : _extractedText;
-    }
+    if (!mounted) return;
+    // Placeholder hint shown in the result card, in the current language.
+    _extractedText = _lang.ui(UIKey.pointCameraHint);
     _ttsService.speak(_lang.voice(VoiceKey.scannerReady), force: true);
     if (mounted) setState(() {});
   }
@@ -363,9 +359,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
       if (mounted) {
         setState(() {
           _isScanning = false;
-          _extractedText = _lang == VBLanguages.hi
-              ? 'टेक्स्ट पढ़ने में त्रुटि: $e'
-              : 'Error reading text: $e';
+          _extractedText = '${_lang.ui(UIKey.readTextOcr)}: $e';
         });
         await _ttsService.stopSpeaking();
         _ttsService.speak(_lang.voice(VoiceKey.ocrError), force: true);
@@ -394,7 +388,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
           },
         ),
         title: Text(
-          _lang == VBLanguages.hi ? 'टेक्स्ट पढ़ें (OCR)' : 'Read Text (OCR)',
+          _lang.ui(UIKey.readTextOcr),
           style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
         ),
       ),
@@ -536,7 +530,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                                   Icon(Icons.menu_book_rounded, color: primaryColor, size: 20),
                                   const SizedBox(width: VBSpacing.xs),
                                   Text(
-                                    _lang == VBLanguages.hi ? 'निकाला गया टेक्स्ट' : 'Extracted Text',
+                                    _lang.ui(UIKey.extractedText),
                                     style: TextStyle(
                                       color: primaryColor,
                                       fontWeight: FontWeight.bold,
@@ -556,7 +550,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    _lang == VBLanguages.hi ? 'बोलने/रुकने के लिए टैप करें' : 'Tap to speak/stop',
+                                    _lang.ui(UIKey.tapToSpeakStop),
                                     style: TextStyle(
                                       color: primaryColor.withOpacity(0.6),
                                       fontSize: 11,
@@ -604,9 +598,7 @@ class _ReadTextScreenState extends State<ReadTextScreen>
                       : const Icon(Icons.document_scanner_rounded),
                   label: Text(_isScanning
                       ? _lang.voice(VoiceKey.scanningText)
-                      : (_lang == VBLanguages.hi
-                          ? 'टेक्स्ट पढ़ें'
-                          : _lang.voice(VoiceKey.readTextReady))),
+                      : _lang.ui(UIKey.readTextOutLoud)),
                 ),
               ),
             ),

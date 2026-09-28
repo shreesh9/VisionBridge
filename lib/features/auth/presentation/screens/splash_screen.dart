@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/firestore_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -86,7 +87,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
+    final lang = VBLanguages.byCode(ref.watch(localeProvider).languageCode);
 
     return Scaffold(
       body: Container(
@@ -127,9 +128,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ),
                   const SizedBox(height: VBSpacing.sm),
                   Text(
-                    isHindi
-                        ? 'आपका AI-संचालित दृश्य सहायक'
-                        : 'Your AI-powered visual assistant',
+                    lang.ui(UIKey.appNameTagline),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: isDark
                               ? VBDarkColors.onSurfaceVariant

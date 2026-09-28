@@ -179,7 +179,7 @@ class _SOSScreenState extends State<SOSScreen>
                 const CircularProgressIndicator(color: Colors.white),
                 const SizedBox(height: VBSpacing.lg),
                 Text(
-                  _localeCode == 'hi' ? 'SOS भेजा जा रहा है...' : 'Sending SOS...',
+                  _lang.ui(UIKey.sendingSos),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -194,7 +194,7 @@ class _SOSScreenState extends State<SOSScreen>
                 ),
                 const SizedBox(height: VBSpacing.lg),
                 Text(
-                  _localeCode == 'hi' ? 'आपातकालीन SOS' : 'Emergency SOS',
+                  _lang.ui(UIKey.emergencySos),
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         color: isDark
                             ? VBDarkColors.onSurface
@@ -204,9 +204,7 @@ class _SOSScreenState extends State<SOSScreen>
                 ),
                 const SizedBox(height: VBSpacing.sm),
                 Text(
-                  _localeCode == 'hi'
-                      ? 'यह आपकी लाइव लोकेशन\nआपातकालीन संपर्कों के साथ साझा करेगा।'
-                      : 'This will share your live location\nwith emergency contacts.',
+                  _lang.ui(UIKey.sosShareLocation),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: isDark
@@ -279,7 +277,7 @@ class _SOSScreenState extends State<SOSScreen>
                 ),
                 const SizedBox(height: VBSpacing.lg),
                 Text(
-                  _localeCode == 'hi' ? 'SOS भेजा जा रहा है' : 'Sending SOS in',
+                  _lang.ui(UIKey.sendingSosIn),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white.withOpacity(0.9),
                       ),
@@ -309,7 +307,7 @@ class _SOSScreenState extends State<SOSScreen>
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Colors.white, width: 2),
                     ),
-                    child: Text(_localeCode == 'hi' ? 'रद्द करें' : 'CANCEL'),
+                    child: Text(_lang.ui(UIKey.sosCancel)),
                   ),
                 ),
               ],

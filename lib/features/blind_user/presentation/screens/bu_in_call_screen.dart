@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/call_orchestration_service.dart';
 import '../../../../services/webrtc_service.dart';
 import '../../../../services/user_settings_service.dart';
@@ -36,6 +37,9 @@ class _BUInCallScreenState extends State<BUInCallScreen> {
   StreamSubscription<WebRTCConnectionState>? _stateSub;
   Timer? _timer;
   String _localeCode = 'en';
+
+  /// UI strings for the current language (from the registry).
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   @override
   void initState() {
@@ -224,8 +228,8 @@ class _BUInCallScreenState extends State<BUInCallScreen> {
                             const SizedBox(width: VBSpacing.sm),
                             Text(
                               _isConnected
-                                  ? (_localeCode == 'hi' ? 'कनेक्टेड' : 'Connected')
-                                  : (_localeCode == 'hi' ? 'स्वयंसेवक की प्रतीक्षा...' : 'Waiting for volunteer...'),
+                                  ? _lang.ui(UIKey.connected)
+                                  : _lang.ui(UIKey.waitingForVolunteer),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w500,
@@ -284,7 +288,7 @@ class _BUInCallScreenState extends State<BUInCallScreen> {
                         icon: _isMuted
                             ? Icons.mic_off_rounded
                             : Icons.mic_rounded,
-                        label: _isMuted ? (_localeCode == 'hi' ? 'अनम्यूट' : 'Unmute') : (_localeCode == 'hi' ? 'म्यूट' : 'Mute'),
+                        label: _isMuted ? _lang.ui(UIKey.unmute) : _lang.ui(UIKey.mute),
                         isActive: !_isMuted,
                         onTap: _toggleMute,
                       ),
@@ -320,7 +324,7 @@ class _BUInCallScreenState extends State<BUInCallScreen> {
                         icon: _isSpeakerOn
                             ? Icons.volume_up_rounded
                             : Icons.volume_down_rounded,
-                        label: _isSpeakerOn ? (_localeCode == 'hi' ? 'स्पीकर' : 'Speaker') : (_localeCode == 'hi' ? 'ईयरपीस' : 'Earpiece'),
+                        label: _isSpeakerOn ? _lang.ui(UIKey.speaker) : _lang.ui(UIKey.earpiece),
                         isActive: _isSpeakerOn,
                         onTap: _toggleSpeaker,
                       ),

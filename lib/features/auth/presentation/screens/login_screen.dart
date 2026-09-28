@@ -14,6 +14,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/locale/locale_provider.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/firestore_service.dart';
 
@@ -218,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
+    final lang = VBLanguages.byCode(ref.watch(localeProvider).languageCode);
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
     final subtextColor =
@@ -241,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Semantics(
                 header: true,
                 child: Text(
-                  isHindi ? 'विज़नब्रिज में\nस्वागत है' : 'Welcome to\nVisionBridge',
+                  lang.ui(UIKey.welcomeTo),
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w700,
@@ -251,9 +252,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: VBSpacing.sm),
               Text(
-                isHindi
-                    ? 'ऐप उपयोग शुरू करने के लिए Google खाते या सत्यापन कोड से साइन इन करें।'
-                    : 'Sign in with your Google account or via verification code to start using the app.',
+                lang.ui(UIKey.loginSubtitle),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: subtextColor,
                       height: 1.45,
@@ -293,7 +292,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         const SizedBox(width: VBSpacing.md),
                         Text(
-                          isHindi ? 'Google से साइन इन करें' : 'Sign In with Google',
+                          lang.ui(UIKey.signInWithGoogle),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -312,7 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: VBSpacing.md),
                       child: Text(
-                        isHindi ? 'या सत्यापन कोड से साइन इन करें' : 'or use verification code',
+                        lang.ui(UIKey.orUseVerificationCode),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: subtextColor,
                             ),
@@ -339,7 +338,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         textInputAction: TextInputAction.done,
                         autocorrect: false,
                         decoration: InputDecoration(
-                          labelText: isHindi ? 'फ़ोन नंबर' : 'Phone Number',
+                          labelText: lang.ui(UIKey.phoneNumber),
                           hintText: '+1 555-555-5555',
                           prefixIcon: const Icon(Icons.phone_iphone_rounded),
                           suffixIcon: IconButton(
@@ -368,7 +367,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         child: _isLoading
                             ? const CircularProgressIndicator()
-                            : Text(isHindi ? 'सत्यापन कोड भेजें' : 'Send Verification Code'),
+                            : Text(lang.ui(UIKey.sendVerificationCode)),
                       ),
                     ),
                   ],
@@ -384,8 +383,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         autocorrect: false,
                         maxLength: 6,
                         decoration: InputDecoration(
-                          labelText: isHindi ? 'सत्यापन कोड' : 'Verification Code',
-                          hintText: isHindi ? '6 अंकों का कोड दर्ज करें' : 'Enter 6-digit code',
+                          labelText: lang.ui(UIKey.verificationCode),
+                          hintText: lang.ui(UIKey.enterOtpHint),
                           prefixIcon: const Icon(Icons.lock_clock_outlined),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: outlineColor),
@@ -411,7 +410,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       _otpController.clear();
                                     });
                                   },
-                            child: Text(isHindi ? 'नंबर बदलें' : 'Change Number'),
+                            child: Text(lang.ui(UIKey.changeNumber)),
                           ),
                         ),
                         const SizedBox(width: VBSpacing.md),
@@ -420,7 +419,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             onPressed: _isLoading ? null : _handleVerifyOTP,
                             child: _isLoading
                                 ? const CircularProgressIndicator(color: Colors.white)
-                                : Text(isHindi ? 'कोड सत्यापित करें' : 'Verify Code'),
+                                : Text(lang.ui(UIKey.verifyCode)),
                           ),
                         ),
                       ],

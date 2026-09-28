@@ -141,7 +141,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHindi = ref.watch(localeProvider).languageCode == 'hi';
+    final lang = VBLanguages.byCode(ref.watch(localeProvider).languageCode);
     final bgColor = isDark ? VBDarkColors.background : VBLightColors.background;
     final textColor = isDark ? VBDarkColors.onSurface : VBLightColors.onSurface;
     final subtextColor =
@@ -164,7 +164,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               Semantics(
                 header: true,
                 child: Text(
-                  isHindi ? 'प्रोफ़ाइल सेटअप' : 'Set up profile',
+                  lang.ui(UIKey.setUpProfile),
                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w700,
@@ -173,9 +173,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
               ),
               const SizedBox(height: VBSpacing.sm),
               Text(
-                isHindi
-                    ? 'बताएँ कि आप VisionBridge का उपयोग कैसे करेंगे।'
-                    : 'Let us know how you will use VisionBridge.',
+                lang.ui(UIKey.letUsKnowHow),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: subtextColor,
                     ),
@@ -184,7 +182,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
 
               // Role cards
               Text(
-                isHindi ? 'मैं हूँ...' : 'I am...',
+                lang.ui(UIKey.iAm),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: textColor,
                     ),
@@ -195,8 +193,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                   Expanded(
                     child: _RoleCard(
                       icon: Icons.accessibility_new_rounded,
-                      label: isHindi ? 'दृष्टिबाधित' : 'Visually\nImpaired',
-                      subtitle: isHindi ? 'मुझे सहायता चाहिए' : 'I need assistance',
+                      label: lang.ui(UIKey.visuallyImpaired),
+                      subtitle: lang.ui(UIKey.iNeedAssistance),
                       isSelected: _selectedRole == UserRole.blindUser,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -217,8 +215,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                   Expanded(
                     child: _RoleCard(
                       icon: Icons.volunteer_activism_rounded,
-                      label: isHindi ? 'स्वयंसेवक' : 'Sighted\nVolunteer',
-                      subtitle: isHindi ? 'मैं मदद करना चाहता हूँ' : 'I want to help',
+                      label: lang.ui(UIKey.sightedVolunteer),
+                      subtitle: lang.ui(UIKey.iWantToHelp),
                       isSelected: _selectedRole == UserRole.volunteer,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -251,8 +249,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         textInputAction: TextInputAction.done,
                         textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
-                          labelText: isHindi ? 'प्रदर्शित नाम' : 'Display Name',
-                          hintText: isHindi ? 'अपना नाम दर्ज करें' : 'Enter your name',
+                          labelText: lang.ui(UIKey.displayName),
+                          hintText: lang.ui(UIKey.enterYourName),
                           prefixIcon: const Icon(Icons.person_outline_rounded),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: outlineColor),
@@ -265,7 +263,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return isHindi ? 'नाम आवश्यक है' : 'Name is required';
+                            return lang.ui(UIKey.nameRequired);
                           }
                           return null;
                         },
@@ -279,7 +277,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         onPressed: _isLoading ? null : _handleSubmit,
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : Text(isHindi ? 'VisionBridge शुरू करें' : 'Start Using VisionBridge'),
+                            : Text(lang.ui(UIKey.startUsingVB)),
                       ),
                     ),
                   ],

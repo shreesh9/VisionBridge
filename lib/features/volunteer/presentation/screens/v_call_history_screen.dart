@@ -7,6 +7,7 @@ import '../../../../core/theme/colors.dart';
 import '../../../../core/theme/dimensions.dart';
 import '../../../../services/firestore_service.dart';
 import '../../../../services/user_settings_service.dart';
+import '../../../../core/locale/supported_voice_languages.dart';
 import '../../../../shared/widgets/user_avatar.dart';
 
 class VCallHistoryScreen extends StatefulWidget {
@@ -21,6 +22,9 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
   List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
   String _localeCode = 'en';
+
+  /// UI/narration strings for the current language (from the registry).
+  VBLanguage get _lang => VBLanguages.byCode(_localeCode);
 
   @override
   void initState() {
@@ -56,13 +60,13 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
   }
 
   String _formatTimeAgo(dynamic createdAt) {
-    if (createdAt == null) return _localeCode == 'hi' ? 'अभी' : 'Just now';
+    if (createdAt == null) return _lang.ui(UIKey.justNow);
     final dt = createdAt is DateTime ? createdAt : createdAt.toDate();
     final diff = DateTime.now().difference(dt as DateTime);
-    if (diff.inDays > 0) return _localeCode == 'hi' ? '${diff.inDays} दिन पहले' : '${diff.inDays}d ago';
-    if (diff.inHours > 0) return _localeCode == 'hi' ? '${diff.inHours} घंटे पहले' : '${diff.inHours}h ago';
-    if (diff.inMinutes > 0) return _localeCode == 'hi' ? '${diff.inMinutes} मिनट पहले' : '${diff.inMinutes}m ago';
-    return _localeCode == 'hi' ? 'अभी' : 'Just now';
+    if (diff.inDays > 0) return _lang.uiX(UIKey.daysAgo, '${diff.inDays}');
+    if (diff.inHours > 0) return _lang.uiX(UIKey.hoursAgo, '${diff.inHours}');
+    if (diff.inMinutes > 0) return _lang.uiX(UIKey.minutesAgo, '${diff.inMinutes}');
+    return _lang.ui(UIKey.justNow);
   }
 
   String _formatDuration(dynamic secs) {
@@ -86,12 +90,10 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
     final outlineColor = isDark ? VBDarkColors.outline : VBLightColors.outline;
     final successColor = isDark ? VBDarkColors.success : VBLightColors.success;
 
-    final bool isHindi = _localeCode == 'hi';
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text(isHindi ? 'कॉल इतिहास' : 'Call History'),
+        title: Text(_lang.ui(UIKey.callHistory)),
         backgroundColor: bgColor,
       ),
       body: _isLoading
@@ -105,7 +107,7 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
                           size: 64, color: subtextColor),
                       const SizedBox(height: VBSpacing.md),
                       Text(
-                        isHindi ? 'अभी तक कोई कॉल नहीं' : 'No calls yet',
+                        _lang.ui(UIKey.noCallsYet),
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -113,7 +115,7 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
                       ),
                       const SizedBox(height: VBSpacing.sm),
                       Text(
-                        isHindi ? 'मदद शुरू करने के लिए ऑनलाइन जाएं' : 'Go online to start helping',
+                        _lang.ui(UIKey.goOnlineToStartHelpingExcl),
                         style: Theme.of(context)
                             .textTheme
                             .bodyMedium
@@ -129,8 +131,8 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
                       const SizedBox(height: VBSpacing.sm),
                   itemBuilder: (context, index) {
                     final record = _history[index];
-                    final blindUserName = record['blindUserName'] as String? ?? (isHindi ? 'दृष्टिबाधित उपयोगकर्ता' : 'Visually Impaired User');
-                    final title = isHindi ? '$blindUserName की मदद की' : 'Helped $blindUserName';
+                    final blindUserName = record['blindUserName'] as String? ?? _lang.ui(UIKey.visuallyImpairedUser);
+                    final title = _lang.uiX(UIKey.helpedUser, blindUserName);
                     final timeAgo = _formatTimeAgo(record['createdAt']);
                     final durationStr = _formatDuration(record['durationSeconds']);
 
@@ -178,9 +180,7 @@ class _VCallHistoryScreenState extends State<VCallHistoryScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    isHindi
-                                        ? '$timeAgo · अवधि: $durationStr'
-                                        : '$timeAgo · Duration: $durationStr',
+                                    _lang.uiX(UIKey.durationLabel, durationStr),
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall

@@ -97,6 +97,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
   /// for TTS, AI descriptions, OCR read-aloud and voice commands.
   void _showLanguagePicker(BuildContext context, Color primaryColor) {
     final currentCode = ref.read(localeProvider).languageCode;
+    final lang = VBLanguages.byCode(currentCode);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -109,7 +110,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
             Padding(
               padding: const EdgeInsets.all(VBSpacing.md),
               child: Text(
-                'Choose Voice Language / आवाज़ की भाषा चुनें',
+                lang.ui(UIKey.chooseVoiceLanguage),
                 style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
@@ -161,7 +162,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final nameController = TextEditingController(text: user?.displayName ?? '');
     String photoData = _profilePhotoUrl ?? user?.photoURL ?? '';
-    final isHindi = ref.read(localeProvider).languageCode == 'hi';
+    final lang = VBLanguages.byCode(ref.read(localeProvider).languageCode);
 
     showDialog(
       context: context,
@@ -194,7 +195,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
             return AlertDialog(
               backgroundColor: surfaceColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(VBRadius.md)),
-              title: Text(isHindi ? 'प्रोफ़ाइल और फोटो संपादित करें' : 'Edit Profile & Photo', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+              title: Text(lang.ui(UIKey.editProfile), style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -228,18 +229,18 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
                       child: TextButton.icon(
                         onPressed: pickPhoto,
                         icon: const Icon(Icons.photo_library_rounded, size: 18),
-                        label: Text(isHindi ? 'डिवाइस से फोटो अपलोड करें' : 'Upload Photo from Device'),
+                        label: Text(lang.ui(UIKey.uploadPhoto)),
                       ),
                     ),
                     const SizedBox(height: VBSpacing.md),
-                    Text(isHindi ? 'प्रदर्शन नाम' : 'Display Name', style: TextStyle(color: subtextColor, fontSize: 12)),
+                    Text(lang.ui(UIKey.displayName), style: TextStyle(color: subtextColor, fontSize: 12)),
                     const SizedBox(height: 4),
                     TextField(
                       controller: nameController,
                       style: TextStyle(color: textColor),
                       onChanged: (_) => setStateDialog(() {}),
                       decoration: InputDecoration(
-                        hintText: isHindi ? 'प्रदर्शन नाम दर्ज करें' : 'Enter display name',
+                        hintText: lang.ui(UIKey.enterDisplayName),
                         hintStyle: TextStyle(color: subtextColor.withOpacity(0.5)),
                         border: const OutlineInputBorder(),
                       ),
@@ -250,7 +251,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(isHindi ? 'रद्द करें' : 'Cancel', style: TextStyle(color: subtextColor)),
+                  child: Text(lang.ui(UIKey.cancel), style: TextStyle(color: subtextColor)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
@@ -276,11 +277,11 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
                       });
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(isHindi ? 'प्रोफ़ाइल फोटो सफलतापूर्वक अपडेट हो गई!' : 'Profile photo updated successfully!')),
+                        SnackBar(content: Text(lang.ui(UIKey.photoUpdated))),
                       );
                     }
                   },
-                  child: Text(isHindi ? 'सेव करें' : 'Save'),
+                  child: Text(lang.ui(UIKey.save)),
                 ),
               ],
             );
@@ -302,12 +303,12 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
     final primaryColor = isDark ? VBDarkColors.primary : VBLightColors.primary;
     final themeMode = ref.watch(themeModeProvider);
     final currentLocale = ref.watch(localeProvider);
-    final isHindi = currentLocale.languageCode == 'hi';
+    final lang = VBLanguages.byCode(currentLocale.languageCode);
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text(isHindi ? 'सेटिंग्स' : 'Settings'),
+        title: Text(lang.ui(UIKey.settings)),
         backgroundColor: bgColor,
       ),
       body: ListView(
@@ -316,17 +317,15 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.md),
 
           // === Profile Section ===
-          _SectionHeader(title: isHindi ? 'प्रोफ़ाइल' : 'Profile', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.profile), textColor: textColor),
           _SettingsTile(
             iconWidget: UserAvatar(
               photoUrl: _profilePhotoUrl ?? FirebaseAuth.instance.currentUser?.photoURL,
               displayName: FirebaseAuth.instance.currentUser?.displayName,
               radius: 18,
             ),
-            title: FirebaseAuth.instance.currentUser?.displayName ?? (isHindi ? 'उपयोगकर्ता' : 'User'),
-            subtitle: isHindi
-                ? 'प्रोफ़ाइल और अवतार संपादित करें • ${FirebaseAuth.instance.currentUser?.email ?? ''}'
-                : 'Tap to edit profile & avatar • ${FirebaseAuth.instance.currentUser?.email ?? ''}',
+            title: FirebaseAuth.instance.currentUser?.displayName ?? lang.ui(UIKey.user),
+            subtitle: '${lang.ui(UIKey.editProfilePhoto)} • ${FirebaseAuth.instance.currentUser?.email ?? ''}',
             onTap: () => _showEditProfileDialog(context, surfaceColor, textColor, subtextColor, primaryColor),
             surfaceColor: surfaceColor,
             outlineColor: outlineColor,
@@ -337,10 +336,10 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // === Appearance ===
-          _SectionHeader(title: isHindi ? 'दिखावट' : 'Appearance', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.appearance), textColor: textColor),
           _SettingsTile(
             icon: Icons.palette_outlined,
-            title: isHindi ? 'थीम' : 'Theme',
+            title: lang.ui(UIKey.theme),
             trailing: Semantics(
               label: 'Theme mode selector. Current: ${themeMode.name}',
               child: SegmentedButton<ThemeMode>(
@@ -378,12 +377,10 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           // Language Picker (voice layer: EN, HI, MR, TA, TE, BN, KN)
           _SettingsTile(
             icon: Icons.language_rounded,
-            title: 'Language / भाषा',
-            subtitle: isHindi
-                ? 'आवाज़, AI विवरण और आवाज़ आदेश की भाषा'
-                : 'Voice, AI descriptions & voice commands',
+            title: lang.ui(UIKey.language),
+            subtitle: lang.ui(UIKey.voiceSubtitleBU),
             trailing: Semantics(
-              label: 'Language selector. Current: ${VBLanguages.byCode(ref.watch(localeProvider).languageCode).englishName}',
+              label: 'Language selector. Current: ${lang.englishName}',
               child: Text(
                 VBLanguages.byCode(currentLocale.languageCode).nativeName,
                 style: TextStyle(color: primaryColor, fontWeight: FontWeight.w600),
@@ -399,10 +396,10 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // === Voice ===
-          _SectionHeader(title: isHindi ? 'आवाज़' : 'Voice', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.voiceSection), textColor: textColor),
           _SliderTile(
             icon: Icons.speed_rounded,
-            title: isHindi ? 'बोलने की गति' : 'TTS Speed',
+            title: lang.ui(UIKey.ttsSpeed),
             value: _ttsSpeed,
             min: 0.1,
             max: 1.0,
@@ -423,7 +420,7 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.sm),
           _SliderTile(
             icon: Icons.tune_rounded,
-            title: isHindi ? 'आवाज़ की पिच' : 'TTS Pitch',
+            title: lang.ui(UIKey.ttsPitch),
             value: _ttsPitch,
             min: 0.5,
             max: 2.0,
@@ -458,15 +455,16 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
             textColor: textColor,
             subtextColor: subtextColor,
             primaryColor: primaryColor,
-            isHindi: isHindi,
+            personaTitle: lang.ui(UIKey.personaTone),
+            personaDesc: lang.ui(UIKey.personaDesc),
           ),
           const SizedBox(height: VBSpacing.lg),
 
           // === Detection ===
-          _SectionHeader(title: isHindi ? 'पहचान' : 'Detection', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.detectionSection), textColor: textColor),
           _SliderTile(
             icon: Icons.visibility_rounded,
-            title: isHindi ? 'AI विश्वास सीमा' : 'AI Confidence Threshold',
+            title: lang.ui(UIKey.confidenceThreshold),
             value: _detectionSensitivity,
             min: 0.5,
             max: 0.95,
@@ -485,8 +483,8 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.sm),
           _ToggleTile(
             icon: Icons.auto_awesome_rounded,
-            title: isHindi ? 'स्वचालित दृश्य विवरण' : 'Auto Scene Description',
-            subtitle: isHindi ? 'AI से स्वचालित दृश्य विवरण' : 'Automatically describe scenes via AI',
+            title: lang.ui(UIKey.autoDescribe),
+            subtitle: lang.ui(UIKey.autoDescribeDesc),
             value: _autoDescribe,
             onChanged: (v) {
               HapticFeedback.selectionClick();
@@ -504,11 +502,11 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // === Accessibility ===
-          _SectionHeader(title: isHindi ? 'सुगमता' : 'Accessibility', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.accessibilitySection), textColor: textColor),
           _ToggleTile(
             icon: Icons.vibration_rounded,
-            title: isHindi ? 'हैप्टिक फीडबैक' : 'Haptic Feedback',
-            subtitle: isHindi ? 'मुख्य कार्यों पर कंपन' : 'Vibrate on key actions',
+            title: lang.ui(UIKey.hapticFeedback),
+            subtitle: lang.ui(UIKey.hapticDesc),
             value: _hapticFeedback,
             onChanged: (v) {
               HapticFeedback.selectionClick();
@@ -523,10 +521,10 @@ class _BUSettingsScreenState extends ConsumerState<BUSettingsScreen> {
           const SizedBox(height: VBSpacing.lg),
 
           // === Account ===
-          _SectionHeader(title: isHindi ? 'खाता' : 'Account', textColor: textColor),
+          _SectionHeader(title: lang.ui(UIKey.account), textColor: textColor),
           _SettingsTile(
             icon: Icons.logout_rounded,
-            title: isHindi ? 'साइन आउट' : 'Sign Out',
+            title: lang.ui(UIKey.signOut),
             titleColor: isDark ? VBDarkColors.error : VBLightColors.error,
             onTap: () async {
               HapticFeedback.mediumImpact();
@@ -778,7 +776,8 @@ class _PersonaTile extends StatelessWidget {
     required this.textColor,
     required this.subtextColor,
     required this.primaryColor,
-    required this.isHindi,
+    required this.personaTitle,
+    required this.personaDesc,
   });
 
   final String selectedGroup;
@@ -788,7 +787,8 @@ class _PersonaTile extends StatelessWidget {
   final Color textColor;
   final Color subtextColor;
   final Color primaryColor;
-  final bool isHindi;
+  final String personaTitle;
+  final String personaDesc;
 
   @override
   Widget build(BuildContext context) {
@@ -810,13 +810,13 @@ class _PersonaTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(isHindi ? 'AI पर्सोना टोन' : 'AI Persona Tone',
+                    Text(personaTitle,
                         style: Theme.of(context)
                             .textTheme
                             .bodyLarge
                             ?.copyWith(color: textColor, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(isHindi ? 'AI आवाज़ शैली आपकी आयु वर्ग के अनुसार बदलती है' : 'Adapts AI voice tone to your age group',
+                    Text(personaDesc,
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
