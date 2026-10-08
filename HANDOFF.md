@@ -11,6 +11,32 @@
 
 ---
 
+## 🆕 Session of 2026-10-01 (Freebuff/Buffy) — Paper Review + One Deferred Fix
+
+### A. Research paper reviewed (owner request) — findings NOT yet applied to the doc
+Reviewed "Research Paper VisionBridge.pdf" against the codebase and live sources. Verdict: structure is solid (ACE/CFE/VEE framing, Algorithm 1, latency table internally consistent: 34.2+48.6+165.1+1.8+37.8 = 287.5 ✓) but NOT submission-ready. Issues, in priority order (owner deferred all edits):
+1. **Refs [24]/[25] are wrong/fabricated** (verified live). Correct: [24] R. Yu, S. Lee, J. Xie, S. M. Billah, J. M. Carroll, "Human–AI Collaboration for Remote Sighted Assistance: Perspectives from the LLM Era," *Future Internet*, vol. 16, no. 7, art. 254, 2024. [25] S. Lee, R. Yu, J. Xie, S. M. Billah, J. M. Carroll, "Opportunities for Human-AI Collaboration in Remote Sighted Assistance," *HAI '22* (ACM), 2022, DOI 10.1145/3490099.3511113.
+2. **Paper cites dead models** (`llama-3.2-11b/90b-vision-preview` + fallback chain) — same deprecation that caused app Fix 2. Update Abstract/II/IV/Table II/ref [11] to `qwen/qwen3.8-27b` or generic "Groq Vision API (multimodal LLM)".
+3. **IEEE placeholder footer** `XXX-X-XXXX-XXXX-X/XX/$XX.00 ©20XX IEEE` still in.
+4. **"Agentic AI" in title never substantiated** — add a short agentic-loop framing or drop the word from the title.
+5. **Paper is behind the app:** says EN/HI only + Devanagari OCR as *future work*; app already ships 7 languages + bundled Devanagari OCR (Fix 6/8). Update abstract, §IV-D, Table I ("ML Kit Latin"), Table II (locales), and move Devanagari OCR out of Future Work.
+6. **Data inconsistencies:** combined latency avg is 291.2 ms, not 287.5 (accuracy/autonomy rows DO average correctly); setup says corridors <100 lux but table says outdoor <100; "both outdoor conditions" garbled → "both lighting conditions"; pick ONE 68% claim (calls vs bandwidth); acknowledge single-device testing.
+7. **Citation hygiene:** [1] (WHO) cited ~20× incl. own results/figures; [12]/[13] miscited for Riverpod/GoRouter; [6],[7],[14]–[19],[21],[22] never cited in body; [23] says "Realtime Database" but app uses Cloud Firestore.
+8. **Threshold mismatch:** paper θ=0.75 (range 0.50–0.95) vs app default 0.70 (range 0.50–0.90) in `user_settings_service.dart`. Reconcile.
+9. **Typos:** "Impairment impacts" → "Visual impairment...", dropped θ/→ glyphs, "They. Do everything" broken sentence, double periods.
+
+### B. DEFERRED (owner decision: "later"): ringing when volunteer app is killed/closed
+Full diagnosis DONE this session — implement straight from these notes, no re-investigation needed:
+- **Current flow:** BU writes `call_requests` → Cloud Function `onCallRequestCreated` (`firebase/functions/index.js`) queries `users` where `role==volunteer AND isOnline==true` → data-only high-priority FCM to each `fcmToken` → **Dart** background isolate (`firebaseMessagingBackgroundHandler` in `fcm_service.dart`) calls `FlutterCallkitIncoming.showCallkitIncoming`.
+- **Root cause of no-ring-when-killed:** data-only FCM requires the Flutter background isolate to spawn and execute Dart. If the app was swiped away/force-stopped/OEM-killed, Dart never runs → no ringing UI. **Verified in plugin source (flutter_callkit_incoming-2.5.8): the plugin has ZERO native FCM/Firebase integration** (grep for FirebaseMessaging/RemoteMessage = 0 hits) — nothing rings without Dart code.
+- **OS-level caveat (no workaround exists):** Android NEVER delivers FCM to force-stopped apps until the user re-opens the app once. Mitigation: in-app battery-optimization exemption prompt (permission already in manifest) + OEM "autostart" guidance (Xiaomi/Oppo/Vivo).
+- **DESIGNED FIX (100% free, all local):** add a native Kotlin `FirebaseMessagingService` in `android/app` (e.g. `VBFcmService.kt`): in `onMessageReceived`, for data `type==INCOMING_CALL`, build a Bundle with the plugin's keys (see `CallkitConstants.kt`: `EXTRA_CALLKIT_ID`, `EXTRA_CALLKIT_NAME_CALLER`, `EXTRA_CALLKIT_TYPE=0`, `EXTRA_CALLKIT_DURATION`, `EXTRA_CALLKIT_TEXT_ACCEPT/DECLINE`, `EXTRA_CALLKIT_EXTRA`, `EXTRA_CALLKIT_RINGTONE_PATH='system_ringtone_default'`, `EXTRA_CALLKIT_IS_SHOW_FULL_LOCKED_SCREEN=true`...) and fire the plugin's broadcast: `Intent("${packageName}.com.hiennv.flutter_callkit_incoming.ACTION_CALL_INCOMING")` with extra `EXTRA_CALLKIT_INCOMING_DATA` = bundle (exactly what `CallkitIncomingBroadcastReceiver.getIntentIncoming()` does) → the native full-screen ringing UI shows with NO Dart involved. Handle `CANCEL_CALL` → `ACTION_CALL_ENDED` broadcast. Register in `AndroidManifest.xml`: `<service android:name=".VBFcmService" android:exported="false">` + `<intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter>`. Cloud Function: remove the `isOnline==true` filter (killed apps can't heartbeat); keep token cleanup. Dart foreground path stays; dedupe double-ring by `callRequestId` if both paths fire.
+- **Test recipe:** `adb shell am force-stop <package>` → BU calls → native ring must appear on locked screen. Then reopen app once (force-stop OS rule).
+
+Owner is now device-testing everything already in this handoff (see Next Steps 0–2). Awaiting results before any new code changes.
+
+---
+
 ## 🛠️ What Was Just Finished Coding (session of 2026-09-28, by Freebuff/Buffy)
 
 ### 1. `lib/services/tts_stt_service.dart` — TTS language race fix (root cause of the "Hindi accent reading English" bug)
@@ -130,7 +156,9 @@ User-reported: (a) OCR "Read Text Out Loud" button crashed the app every time, (
 
 ## 🎯 Next Steps for the Incoming AI (pick up exactly here)
 
-0. **Verify Fix 4 with a FULL rebuild (do this first):** `flutter clean` → `flutter run` (gradle changes are invisible to hot reload!). Then OCR: press **Read Text Out Loud** repeatedly, scan English text AND a Hindi sign — app must not close, speech must match the scanned language. If it STILL crashes after a clean rebuild, capture `adb logcat` and investigate native logs (suspects: device-specific ML Kit issue, minify/R8 in release builds).
+0. **Owner is currently device-testing Fixes 1–8 on hardware.** WAIT for owner's test results before changing code. If failures come back, debug per the verification checklists below.
+0b. **Deferred (explicit owner decision, do NOT start unprompted):** killed-app ringing fix — full design + root cause documented in section B above; implement only when owner says go. Paper corrections (section A) also await owner go-ahead.
+0c. **Verify Fix 4 with a FULL rebuild (do this first):** `flutter clean` → `flutter run` (gradle changes are invisible to hot reload!). Then OCR: press **Read Text Out Loud** repeatedly, scan English text AND a Hindi sign — app must not close, speech must match the scanned language. If it STILL crashes after a clean rebuild, capture `adb logcat` and investigate native logs (suspects: device-specific ML Kit issue, minify/R8 in release builds).
 1. **Verify Fix 6+7+8 (multi-language, FULL UI) on device:** Settings → Language / भाषा → picker opens with 7 languages. Pick each of mr/ta/te/bn/kn: (a) the ENTIRE UI renders in that language (home, settings, call screens, histories — Fix 8), (b) ALL narration is in the selected language — NO English-with-accent anywhere (Fix 7), (c) the language-changed confirmation speaks in THAT language, (d) Describe Scene speaks pure <language>, (e) voice commands per language (Marathi "मदत करा" → SOS, "मदत" → help), (f) OCR: Devanagari sign with mr selected → Marathi voice; English page with mr selected → English voice with no prefix; Tamil sign → "No text found" (known limitation). Requires the device to have that Google TTS voice installed (Settings → Text-to-speech).
 2. **Verify Fix 2 & 3 on device:** Describe must return a real description via `qwen/qwen3.8-27b` (not "AI models are busy") — if it fails, log the Groq response body (error string includes status + body; could be key quota, not model). Persona: switch Gen Z ↔ Adult in Settings, run Describe in EN and हि, tone should shift.
 2. **Then — on-device bilingual verification (from previous part of session):**
@@ -148,4 +176,4 @@ User-reported: (a) OCR "Read Text Out Loud" button crashed the app every time, (
 
 ---
 **Last Updated By:** Freebuff (Buffy)
-**Date/Time:** 2026-09-28
+**Date/Time:** 2026-10-01
